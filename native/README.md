@@ -6,16 +6,16 @@ This is a customized GPL-3.0 derivative of [Metrolist](https://github.com/Metrol
 
 Requires JDK 25 (Temurin/Adoptium), an Android SDK compatible with the upstream Android project, and configured Android licenses.
 
-\`\`\`bash
+```bash
 cd native
 ./gradlew :androidApp:assembleDebug
-\`\`\`
+```
 
-The debug build should output an APK under \`androidApp/build/outputs/apk/debug/\`. This import has not been proven to compile until CI succeeds.
+The debug build should output an APK under `androidApp/build/outputs/apk/debug/`. This import has not been proven to compile until CI succeeds.
 
 ## Defaults
 
-- Application ID: \`dev.w0rd3r.omomusic\`
+- Application ID: `dev.w0rd3r.omomusic`
 - Name and adaptive icon: omo Music
 - Material 3 Expressive layout
 - First launch: OLED-black, soft-blue accent, reduced gradients
