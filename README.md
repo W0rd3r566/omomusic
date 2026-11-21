@@ -37,7 +37,7 @@ cd omomusic/native
 
 Ожидаемый путь результата: native/androidApp/build/outputs/apk/debug/.
 
-[GitHub Actions: Bootstrap omo native Android](../../actions/workflows/native-bootstrap.yml) выполняет сборку и прикладывает APK **только при успехе**. Факт появления исходников не означает успешную компиляцию.
+[GitHub Actions: Build omo Music Android](https://github.com/W0rd3r566/omomusic/actions/workflows/native-build.yml) выполняет сборку и прикладывает APK **только при успехе**. Факт появления исходников не означает успешную компиляцию.
 
 ## Старые ReVanced-патчи
 
