@@ -5,3 +5,4 @@ public final class dev/w0rd3r/omo/patches/OmoBlackThemePatchKt {
 public final class dev/w0rd3r/omo/patches/OmoBrandingPatchKt {
 	public static final fun getOmoBrandingPatch ()Lapp/revanced/patcher/patch/ResourcePatch;
 }
+
