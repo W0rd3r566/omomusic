@@ -4,12 +4,12 @@ Native Android application, built from open-source OuterTune playback/search and
 
 ## Build
 
-JDK 21, Android SDK 37, and Android Gradle Plugin dependencies required.
+JDK 21, Android SDK 37.0, and Android Gradle Plugin dependencies required.
 
-\`\`\`bash
+```bash
 cd client
 ./gradlew :app:assembleCoreDebug
-\`\`\`
+```
 
-APK: \`app/build/outputs/apk/core/debug/\`.
+APK: `app/build/outputs/apk/core/debug/`.
 Upstream license: GPL-3.0; see LICENSE and UPSTREAM.md.
