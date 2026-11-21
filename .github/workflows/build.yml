@@ -2,7 +2,19 @@ name: Build omo patches
 
 on:
   push:
+    paths:
+      - 'patches/**'
+      - 'scripts/check_assets.py'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - '.github/workflows/build.yml'
   pull_request:
+    paths:
+      - 'patches/**'
+      - 'scripts/check_assets.py'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 permissions:
