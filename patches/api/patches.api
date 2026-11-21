@@ -1,0 +1,7 @@
+public final class dev/w0rd3r/omo/patches/OmoBlackThemePatchKt {
+	public static final fun getOmoBlackThemePatch ()Lapp/revanced/patcher/patch/ResourcePatch;
+}
+
+public final class dev/w0rd3r/omo/patches/OmoBrandingPatchKt {
+	public static final fun getOmoBrandingPatch ()Lapp/revanced/patcher/patch/ResourcePatch;
+}
