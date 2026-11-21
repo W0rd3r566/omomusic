@@ -37,7 +37,7 @@ def main():
         for folder in (
             "app", "innertube", "sabr", "kugou", "lrclib", "lastfm",
             "fingerprint", "material-color-utilities", "ffMetadataEx",
-            "taglib", "innertubex", "gradle", "prebuilt",
+            "taglib", "innertubex", "gradle", "prebuilt", "config",
         ):
             path = source / folder
             if path.is_dir():
