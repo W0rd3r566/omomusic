@@ -1,0 +1,36 @@
+name: Build omo patches
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Validate logo assets and patches
+        run: python3 scripts/check_assets.py
+      - name: Compile ReVanced patches
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew build --no-daemon --stacktrace
+      - name: Upload patches
+        uses: actions/upload-artifact@v4
+        with:
+          name: omo-patches
+          path: |
+            patches/build/**/*.rvp
+            patches/build/**/*.jar
+            patches/build/**/*.json
+          if-no-files-found: warn
