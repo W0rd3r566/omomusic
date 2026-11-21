@@ -55,6 +55,9 @@ def main() -> None:
 
         must_replace(DEST / "settings.gradle.kts", 'rootProject.name = "OuterTune"', 'rootProject.name = "omoMusic"')
         app_build = DEST / "app/build.gradle.kts"
+        must_replace(app_build, "    compileSdk = 37",
+                     "    compileSdk {\\n        version = release(37) {\\n            minorApiLevel = 0\\n        }\\n    }")
+        must_replace(app_build, "        targetSdk = 37", "        targetSdk = 36")
         must_replace(app_build, 'applicationId = "com.dd3boh.outertune"', 'applicationId = "dev.w0rd3r.omomusic"')
         must_replace(app_build, 'versionCode = 73', 'versionCode = 1')
         must_replace(app_build, 'versionName = "0.11.1"', 'versionName = "0.1.0"')
