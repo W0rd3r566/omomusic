@@ -1,51 +1,73 @@
-name: Build omo Music Android APK
+name: Build omo Music Android (InterTune engine)
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/android17-intertune]
     paths:
-      - 'client/**'
+      - 'scripts/import_android17.py'
       - '.github/workflows/omo-build.yml'
   pull_request:
     paths:
-      - 'client/**'
+      - 'scripts/import_android17.py'
       - '.github/workflows/omo-build.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
-
-concurrency:
-  group: omo-native-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
   android:
-    name: Compile native omo APK
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 21
+        with:
+          ref: fix/android17-intertune
+          persist-credentials: true
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v4
-      - name: Install Android 37.0 SDK matching Gradle API level
+      - name: Install Android SDK 36
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --install "platforms;android-37.0" "build-tools;36.0.0"
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "ndk;29.0.13113456" "cmake;3.31.6"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Compile core debug APK
-        working-directory: client
+      - name: Import corrected YouTube Music engine
+        run: |
+          if [ ! -d client-next ]; then python3 scripts/import_android17.py; fi
+          test -f client-next/app/build.gradle.kts
+          test -f client-next/innertube/build.gradle.kts
+      - name: Compile omo Music debug
+        working-directory: client-next
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleCoreDebug --no-daemon --max-workers=2 --stacktrace -DskipFormatKtlint
-      - name: Upload installable Android APK
+          ./gradlew :app:assembleCoreDebug --no-daemon --max-workers=2 --stacktrace
+      - name: Verify APK signature
+        run: |
+          APK=$(find client-next/app/build/outputs/apk/core/debug -name '*arm64-v8a*.apk' -print -quit)
+          if [ -z "$APK" ]; then APK=$(find client-next/app/build/outputs/apk/core/debug -name '*universal*.apk' -print -quit); fi
+          test -n "$APK"
+          apksigner verify --verbose "$APK"
+          echo "Pixel arm64 APK: $APK"
+      - name: Publish Pixel 9a-compatible APKs
         uses: actions/upload-artifact@v4
         with:
-          name: omo-music-android-debug
-          path: client/app/build/outputs/apk/core/debug/*.apk
+          name: omo-music-intertune-android17
+          path: |
+            client-next/app/build/outputs/apk/core/debug/*arm64-v8a*.apk
+            client-next/app/build/outputs/apk/core/debug/*universal*.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Preserve tested source code
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add client-next
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(android): import tested InterTune-based omo Music client'
+            git pull --rebase origin fix/android17-intertune
+            git push origin HEAD:fix/android17-intertune
+          fi
