@@ -78,6 +78,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -635,6 +636,8 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
                                         .height(bottomInset + getNavPadding())
+                                        .padding(horizontal = 12.dp)
+                                        .clip(MaterialTheme.shapes.extraLarge)
                                         .offset {
                                             if (navigationBarHeight == 0.dp) {
                                                 IntOffset(
@@ -655,7 +658,7 @@ class MainActivity : ComponentActivity() {
                                                 )
                                             }
                                         },
-                                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                                 ) {
                                     navigationItems.fastForEach { screen ->
                                         // TODO: display selection when based on root page user entered
