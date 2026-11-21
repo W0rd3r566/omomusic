@@ -6,19 +6,10 @@ on:
     paths:
       - 'scripts/import_android17.py'
       - '.github/workflows/android17-bootstrap.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/import_android17.py'
-      - '.github/workflows/android17-bootstrap.yml'
   workflow_dispatch:
 
 permissions:
   contents: write
-
-concurrency:
-  group: omo-android17-bootstrap
-  cancel-in-progress: false
 
 jobs:
   test-and-import:
@@ -58,9 +49,18 @@ jobs:
           APK=$(find client-next/app/build/outputs/apk/core/debug -name '*universal*.apk' -print -quit)
           if [ -z "$APK" ]; then APK=$(find client-next/app/build/outputs/apk/core/debug -name '*.apk' -print -quit); fi
           test -n "$APK"
-          apksigner verify --verbose "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
           echo "Validated APK $APK"
           zipinfo -1 "$APK" | grep '^lib/' | head -40 || true
+      - name: Upload test APK before persisting sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: omo-music-intertune-android17
+          path: |
+            client-next/app/build/outputs/apk/core/debug/*arm64-v8a*.apk
+            client-next/app/build/outputs/apk/core/debug/*universal*.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Preserve complete source snapshot
         run: |
           git config user.name 'github-actions[bot]'
