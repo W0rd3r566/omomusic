@@ -29,6 +29,10 @@ import com.dd3boh.outertune.constants.HighContrastKey
 import com.dd3boh.outertune.constants.PlayerBackgroundStyle
 import com.dd3boh.outertune.constants.PlayerBackgroundStyleKey
 import com.dd3boh.outertune.constants.PureBlackKey
+import com.dd3boh.outertune.constants.OmoAccentKey
+import com.dd3boh.outertune.constants.OmoCornersKey
+import com.dd3boh.outertune.ui.theme.OmoAccent
+import com.dd3boh.outertune.ui.theme.OmoCorners
 import com.dd3boh.outertune.ui.component.EnumListPreference
 import com.dd3boh.outertune.ui.component.SwitchPreference
 import com.dd3boh.outertune.utils.rememberEnumPreference
@@ -36,11 +40,28 @@ import com.dd3boh.outertune.utils.rememberPreference
 
 @Composable
 fun ColumnScope.ThemeAppFrag() {
-    val (darkMode, onDarkModeChange) = rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
-    val (dynamicTheme, onDynamicThemeChange) = rememberPreference(DynamicThemeKey, defaultValue = true)
+    val (darkMode, onDarkModeChange) = rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
+    val (dynamicTheme, onDynamicThemeChange) = rememberPreference(DynamicThemeKey, defaultValue = false)
     val (highContrastCompat, onHccChange) = rememberPreference(HighContrastKey, defaultValue = false)
 
-    val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
+    val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = true)
+    val (omoAccent, setOmoAccent) = rememberEnumPreference(OmoAccentKey, defaultValue = OmoAccent.SKY)
+    val (omoCorners, setOmoCorners) = rememberEnumPreference(OmoCornersKey, defaultValue = OmoCorners.EXPRESSIVE)
+
+    EnumListPreference(
+        title = { Text(stringResource(R.string.omo_accent)) },
+        icon = { Icon(Icons.Rounded.Palette, null) },
+        selectedValue = omoAccent,
+        onValueSelected = setOmoAccent,
+        valueText = { it.title },
+    )
+    EnumListPreference(
+        title = { Text(stringResource(R.string.omo_corners)) },
+        icon = { Icon(Icons.Rounded.Contrast, null) },
+        selectedValue = omoCorners,
+        onValueSelected = setOmoCorners,
+        valueText = { it.title },
+    )
 
     SwitchPreference(
         title = { Text(stringResource(R.string.enable_dynamic_theme)) },
