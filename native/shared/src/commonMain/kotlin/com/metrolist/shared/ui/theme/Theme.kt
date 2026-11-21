@@ -13,28 +13,28 @@ import com.metrolist.shared.ui.haptics.MetrolistHapticsProvider
 
 private val LightColors =
     lightColorScheme(
-        primary = Color(0xFF1B5E20),
+        primary = Color(0xFF216580),
         onPrimary = Color.White,
-        secondary = Color(0xFF388E3C),
+        secondary = Color(0xFF4D7182),
         onSecondary = Color.White,
-        background = Color(0xFFF1F8E9),
-        onBackground = Color(0xFF212121),
+        background = Color(0xFFFAF9F7),
+        onBackground = Color(0xFF1D2024),
         surface = Color.White,
-        onSurface = Color(0xFF212121),
+        onSurface = Color(0xFF1D2024),
         error = Color(0xFFB00020),
         onError = Color.White,
     )
 
 private val DarkColors =
     darkColorScheme(
-        primary = Color(0xFF81C784),
+        primary = Color(0xFFA7D7FF),
         onPrimary = Color.Black,
-        secondary = Color(0xFFA5D6A7),
+        secondary = Color(0xFFB5CBD9),
         onSecondary = Color.Black,
-        background = Color(0xFF101010),
-        onBackground = Color(0xFFEFEFEF),
-        surface = Color(0xFF121212),
-        onSurface = Color(0xFFEFEFEF),
+        background = Color(0xFF0A0B0C),
+        onBackground = Color(0xFFE8EBEF),
+        surface = Color(0xFF13161A),
+        onSurface = Color(0xFFE8EBEF),
         error = Color(0xFFCF6679),
         onError = Color.Black,
     )
