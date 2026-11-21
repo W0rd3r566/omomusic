@@ -14,6 +14,8 @@ val HighContrastKey = booleanPreferencesKey("highContrast")
 val PlayerBackgroundStyleKey = stringPreferencesKey("playerBackgroundStyle")
 val DarkModeKey = stringPreferencesKey("darkMode")
 val PureBlackKey = booleanPreferencesKey("pureBlack")
+val OmoAccentKey = stringPreferencesKey("omoAccent")
+val OmoCornersKey = stringPreferencesKey("omoCorners")
 
 val TabletUiKey = booleanPreferencesKey("tabletUi")
 
