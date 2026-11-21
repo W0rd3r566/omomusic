@@ -107,7 +107,7 @@ fun AboutScreen(
             verticalAlignment = Alignment.Top,
         ) {
             Text(
-                text = "OuterTune",
+                text = "omo Music",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -153,7 +153,7 @@ fun AboutScreen(
             IconLabelButton(
                 text = "GitHub",
                 painter = painterResource(R.drawable.github),
-                onClick = { uriHandler.openUri("https://github.com/OuterTune/OuterTune") },
+                onClick = { uriHandler.openUri("https://github.com/W0rd3r566/omomusic") },
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
 
@@ -194,25 +194,16 @@ fun AboutScreen(
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.help_bug_report_action)) },
                     onClick = {
-                        uriHandler.openUri("https://github.com/OuterTune/OuterTune/issues")
+                        uriHandler.openUri("https://github.com/W0rd3r566/omomusic/issues")
                     }
                 )
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.help_support_forum)) },
                     onClick = {
-                        uriHandler.openUri("https://github.com/OuterTune/OuterTune/discussions")
+                        uriHandler.openUri("https://github.com/W0rd3r566/omomusic/issues")
                     }
                 )
-                PreferenceEntry(
-                    title = { Text(stringResource(R.string.help_contact_email_inquiries)) },
-                    onClick = {
-                        val clipData = ClipData.newPlainText(
-                            context.getString(R.string.app_name),
-                            AnnotatedString("outertune@protonmail.com")
-                        )
-                        clipboardManager.nativeClipboard.setPrimaryClip(clipData)
-                    }
-                )
+
             }
             Spacer(modifier = Modifier.height(16.dp))
 
