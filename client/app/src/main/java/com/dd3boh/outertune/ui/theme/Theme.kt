@@ -40,6 +40,9 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import coil3.toUri
 import com.dd3boh.outertune.playback.PlayerConnection
+import com.dd3boh.outertune.constants.OmoAccentKey
+import com.dd3boh.outertune.constants.OmoCornersKey
+import com.dd3boh.outertune.utils.rememberEnumPreference
 import com.dd3boh.outertune.utils.LocalArtworkPath
 import com.dd3boh.outertune.utils.coilCoroutine
 import com.google.material.color.dynamiccolor.DynamicScheme
@@ -64,6 +67,8 @@ fun OuterTuneTheme(
     content: @Composable () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val (omoAccent) = rememberEnumPreference(OmoAccentKey, defaultValue = OmoAccent.SKY)
+    val (omoCorners) = rememberEnumPreference(OmoCornersKey, defaultValue = OmoCorners.EXPRESSIVE)
 
     var themeColor by rememberSaveable(stateSaver = ColorSaver) {
         mutableStateOf(DefaultThemeColor)
@@ -102,14 +107,11 @@ fun OuterTuneTheme(
         }
     }
 
-    val colorScheme = remember(darkTheme, pureBlack, themeColor, enableDynamicTheme) {
+    val colorScheme = remember(darkTheme, pureBlack, themeColor, enableDynamicTheme, omoAccent) {
         if (!enableDynamicTheme && darkTheme) {
-            darkColorScheme(
-                primary = Color(0xFFA7D7FF),
-                onPrimary = Color(0xFF00344D),
-                primaryContainer = Color(0xFF17465D),
-                onPrimaryContainer = Color(0xFFD0EAFF),
-                secondary = Color(0xFFB9C8D3),
+            val tonal = SchemeTonalSpot(Hct.fromInt(omoAccent.color.toArgb()), true, 0.0).toColorScheme()
+            tonal.copy(
+                primary = omoAccent.color,
                 background = Color(0xFF000000),
                 onBackground = Color(0xFFF1F3F6),
                 surface = Color(0xFF000000),
@@ -149,10 +151,11 @@ fun OuterTuneTheme(
         colorScheme = colorScheme,
         typography = MaterialTheme.typography,
         shapes = Shapes(
-            small = RoundedCornerShape(12.dp),
-            medium = RoundedCornerShape(20.dp),
-            large = RoundedCornerShape(28.dp),
-            extraLarge = RoundedCornerShape(36.dp),
+            extraSmall = RoundedCornerShape((omoCorners.smallDp / 2).dp),
+            small = RoundedCornerShape(omoCorners.smallDp.dp),
+            medium = RoundedCornerShape(omoCorners.mediumDp.dp),
+            large = RoundedCornerShape(omoCorners.largeDp.dp),
+            extraLarge = RoundedCornerShape(omoCorners.extraLargeDp.dp),
         ),
         content = content
     )
