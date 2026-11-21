@@ -6,19 +6,10 @@ on:
     paths:
       - 'scripts/import_android17.py'
       - '.github/workflows/android17-bootstrap.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/import_android17.py'
-      - '.github/workflows/android17-bootstrap.yml'
   workflow_dispatch:
 
 permissions:
   contents: write
-
-concurrency:
-  group: omo-android17-bootstrap
-  cancel-in-progress: false
 
 jobs:
   test-and-import:
