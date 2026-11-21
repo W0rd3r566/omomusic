@@ -1,5 +1,7 @@
 # omo Music
 
+> **Важное исправление (Android 17 / YouTube Music):** прежняя сборка `client/` основана на OuterTune 0.11.1, из которого разработчики удалили функции YouTube Music. Она **не подходит** для omo Music как YouTube Music-клиента, даже если APK устанавливается. Идёт замена основы на InterTune в ветке [`fix/android17-intertune`](https://github.com/W0rd3r566/omomusic/tree/fix/android17-intertune). Сборку, запуск на Pixel 9a и воспроизведение считаем неподтверждёнными до проверки.
+
 **omo Music** — независимый музыкальный клиент для Android на **Kotlin + Jetpack Compose**. Это **устанавливаемое приложение**, не ReVanced-патчи, WebView или модифицированный APK YouTube Music.
 
 Визуальный язык: **Material 3 Expressive**, graphite/black, плавные формы и аккуратные голубые акценты. Исходники открыты.
