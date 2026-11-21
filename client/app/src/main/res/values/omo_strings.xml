@@ -3,4 +3,5 @@
     <string name="omo_accent">omo accent color</string>
     <string name="omo_corners">Component shapes</string>
     <string name="omo_home_subtitle">Your music. Your way.</string>
+    <string name="omo_customize">Customize</string>
 </resources>
