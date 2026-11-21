@@ -450,7 +450,7 @@ fun SetupWizard(
                                 IconLabelButton(
                                     text = "GitHub",
                                     icon = Icons.Rounded.Code,
-                                    onClick = { uriHandler.openUri("https://github.com/OuterTune/OuterTune") },
+                                    onClick = { uriHandler.openUri("https://github.com/W0rd3r566/omomusic") },
                                     modifier = Modifier.padding(horizontal = 8.dp)
                                 )
 
