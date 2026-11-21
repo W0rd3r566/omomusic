@@ -151,23 +151,23 @@ def main():
             "Licensing: GPL-3.0.\n", encoding="utf-8"
         )
         (DEST / "README.md").write_text(
-            "# omo Music 0.2.0\\n\\n"
+            "# omo Music 0.2.0\n\n"
             "A native Kotlin / Jetpack Compose Android client with YouTube Music "
             "search, streaming, library and background playback provided by "
-            "InterTune v0.12.11.\\n\\n"
-            "## Google account\\n\\n"
+            "InterTune v0.12.11.\n\n"
+            "## Google account\n\n"
             "Open the Home card and tap Sign in, or open Account in the app. "
             "The app uses Android's Google account picker (where available) "
             "and Google's sign-in page in WebView, retaining the authenticated "
             "YouTube Music session cookie. This is not official Google OAuth. "
             "Google can decline embedded browser sign-in; no passwords should "
-            "be supplied outside Google's verified site.\\n\\n"
-            "## Build\\n\\n"
-            "JDK 21, Android SDK 36, NDK 29.0.13113456 and CMake 3.31.6.\\n\\n"
-            "    ./gradlew :app:assembleCoreDebug\\n\\n"
+            "be supplied outside Google's verified site.\n\n"
+            "## Build\n\n"
+            "JDK 21, Android SDK 36, NDK 29.0.13113456 and CMake 3.31.6.\n\n"
+            "    ./gradlew :app:assembleCoreDebug\n\n"
             "Choose an arm64-v8a or universal APK for a Pixel 9a. Device runtime "
-            "and account sign-in require testing; compiling is not proof.\\n\\n"
-            "GPL-3.0 source attribution: see UPSTREAM.md and LICENSE.\\n",
+            "and account sign-in require testing; compiling is not proof.\n\n"
+            "GPL-3.0 source attribution: see UPSTREAM.md and LICENSE.\n",
             encoding="utf-8",
         )
         print("Imported InterTune", TAG, commit)
