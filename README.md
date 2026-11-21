@@ -17,7 +17,7 @@
 
 ## Сборка из исходников
 
-Требуются **JDK 21**, **Android SDK API 36**, доступ к Maven Central и Google Maven. Проект использует Gradle Wrapper и Kotlin.
+Требуются **JDK 21**, **Android SDK API 37.0**, доступ к Maven Central и Google Maven. Проект использует Gradle Wrapper и Kotlin.
 
 ```bash
 git clone https://github.com/W0rd3r566/omomusic.git
@@ -38,7 +38,7 @@ chmod +x gradlew
 | `client/material-color-utilities/` | Цветовые инструменты движка |
 | `client/UPSTREAM.md` | Ссылка на upstream и точный исходный коммит |
 | `client/LICENSE` | Лицензия открытой основы |
-| `scripts/import_omo_android.py` | Воспроизводимый импорт исходного движка с omo-изменениями |
+| `scripts/import_omo_android.py` | Первичный импорт открытого движка (дальнейшие доработки — в клиенте) |
 | `assets/` | Оригинальная графика |
 | `patches/`, `native/` | Старые эксперименты, не входят в сборку текущего клиента |
 
