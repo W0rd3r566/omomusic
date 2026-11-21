@@ -77,6 +77,71 @@ def main():
             "val DefaultThemeColor = Color(0xFFED5564)",
             "val DefaultThemeColor = Color(0xFFA7D7FF)",
         )
+        # Reuse the original omo Compose home component rather than just rebadging InterTune.
+        ui_root = Path("app/src/main/java/com/dd3boh/outertune/ui")
+        old_hero = ROOT / "client" / ui_root / "omo/OmoHero.kt"
+        new_hero = DEST / ui_root / "omo/OmoHero.kt"
+        new_hero.parent.mkdir(parents=True, exist_ok=True)
+        hero = old_hero.read_text(encoding="utf-8")
+        hero = hero.replace(
+            "import androidx.compose.material3.Text\\n",
+            "import androidx.compose.material3.Text\\nimport androidx.compose.material3.TextButton\\n"
+        )
+        hero = hero.replace(
+            "import com.dd3boh.outertune.R\\n",
+            "import com.dd3boh.outertune.R\\n"
+            "import com.dd3boh.outertune.constants.InnerTubeCookieKey\\n"
+            "import com.dd3boh.outertune.utils.rememberPreference\\n"
+        )
+        hero = hero.replace(
+            "fun OmoHero(navController: NavController) {",
+            "fun OmoHero(navController: NavController) {\\n"
+            '    val (loginCookie) = rememberPreference(InnerTubeCookieKey, defaultValue = "")'
+        )
+        marker = "            }\\n        }\\n    }\\n}\\n"
+        if marker not in hero:
+            raise RuntimeError("Original omo hero layout changed")
+        hero = hero.replace(marker, '''            }
+            TextButton(
+                onClick = {
+                    navController.navigate(if (loginCookie.isBlank()) "login" else "account")
+                },
+            ) {
+                Text(
+                    text = stringResource(
+                        if (loginCookie.isBlank()) R.string.login else R.string.account
+                    ),
+                )
+            }
+        }
+    }
+}
+''', 1)
+        new_hero.write_text(hero, encoding="utf-8")
+
+        for locale in ("values", "values-ru"):
+            source_strings = ROOT / "client/app/src/main/res" / locale / "omo_strings.xml"
+            target_strings = DEST / "app/src/main/res" / locale / "omo_strings.xml"
+            target_strings.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_strings, target_strings)
+
+        home = DEST / ui_root / "screens/HomeScreen.kt"
+        text = home.read_text(encoding="utf-8")
+        needle = "import com.dd3boh.outertune.LocalPlayerAwareWindowInsets"
+        if needle not in text:
+            raise RuntimeError("InterTune HomeScreen imports have changed")
+        text = text.replace(needle, needle + "\\nimport com.dd3boh.outertune.ui.omo.OmoHero")
+        needle = '            item(key = "tiles", contentType = "tiles") {'
+        if needle not in text:
+            raise RuntimeError("InterTune HomeScreen feed layout changed")
+        text = text.replace(
+            needle,
+            '            item(key = "omo-hero", contentType = "omo-hero") {\\n'
+            '                OmoHero(navController)\\n'
+            '            }\\n' + needle
+        )
+        home.write_text(text, encoding="utf-8")
+
         (DEST / "UPSTREAM.md").write_text(
             "# Source attribution\n\n"
             "The YouTube Music engine is InterTune " + TAG + " at commit " + commit +
