@@ -1,51 +1,59 @@
 # omo Music
 
-**omo** is an independent, open-source set of **ReVanced resource patches for YouTube Music**, with a minimal black-and-white identity and a small pastel-blue Play symbol.
+**omo Music** — независимый Android-клиент YouTube Music с нативным интерфейсом **Material 3 Expressive**. Не WebView-оболочка: проект использует открытый музыкальный движок, Media3 и Compose-интерфейс [Metrolist](https://github.com/MetrolistGroup/Metrolist).
 
-This is **a working source repository for patch development, not a finished YouTube Music client APK**. No target APK, proprietary Google assets, Google credentials, patches for Premium access, or bypasses of DRM/payment checks are distributed here.
+> **Статус:** исходники Android-клиента импортированы и брендированы. APK и функции требуют подтверждения сборкой CI и тестирования на устройстве. Это ранняя разработка, не стабильный релиз.
 
-## Implemented in v0.1.0
+## Структура
 
-- **omo Branding:** replaces the Android launcher app label and launcher activity-alias label with `omo`, adds the white rounded logo with the light-blue ▶.
-- A true **Android adaptive icon**, circular on Pixel, with monochrome layer and a legacy vector fallback.
-- **omo Black:** optional restrained dark palette affecting supported existing YouTube Music color resources.
-- Official Gradle wrapper, build CI and static icon/resource tests.
-- The resource patches only modify appearance. Your music, recommendations and Google account data are handled by the original YouTube Music app, subject to its own terms and platform compatibility.
+| Путь | Что внутри |
+| --- | --- |
+| [native/](native/) | Основной Android-клиент: проигрывание, поиск, библиотека, очередь, плейлисты и Material 3 Expressive |
+| [patches/](patches/) | Отдельные ReVanced-патчи оформления для оригинального YouTube Music |
+| [assets/omo-icon.svg](assets/omo-icon.svg) | Фирменный логотип omo с мягким голубым ▶ |
+| [scripts/import_native.py](scripts/import_native.py) | Импорт открытой кодовой базы Android-клиента |
+| [scripts/brand_native.py](scripts/brand_native.py) | Применение фирменного стиля, иконки, package ID и стандартных настроек |
 
-## Build patch bundle
+## Фирменный стиль omo
 
-Requirements: **JDK 17**; dependencies and GitHub Packages credentials may be needed for the ReVanced Gradle plugin (see the upstream [ReVanced template](https://github.com/ReVanced/revanced-patches-template)).
+- Чёрная тема и голубой акцент **#A7D7FF** по умолчанию.
+- Круглая адаптивная и монохромная иконка.
+- Material 3 Expressive: настраиваемый интерфейс, анимации и мини-плеер.
+- Настройка темы, внешнего вида проигрывателя, шрифтов и навигации через существующие настройки.
+- Независимый ID Android-приложения: **dev.w0rd3r.omomusic**.
+- Обновления и Discord application ID исходного клиента отключены до собственной реализации.
 
-```bash
+**План следующих доработок:** отдельные экраны в стиле omo, быстрые пресеты, улучшенные анимации, персонализация плеера и проверка совместимости на реальных устройствах.
+
+## Сборка Android APK
+
+Требуются **Temurin JDK 25**, Android SDK **37.1** и зависимости Gradle.
+
+~~~bash
 git clone https://github.com/W0rd3r566/omomusic.git
-cd omomusic
+cd omomusic/native
+./gradlew :androidApp:assembleDebug
+~~~
+
+Ожидаемый путь результата: native/androidApp/build/outputs/apk/debug/.
+
+[GitHub Actions: Bootstrap omo native Android](../../actions/workflows/native-bootstrap.yml) выполняет сборку и прикладывает APK **только при успехе**. Факт появления исходников не означает успешную компиляцию.
+
+## Старые ReVanced-патчи
+
+Эта часть независима от Android-клиента и использует JDK 17:
+
+~~~bash
 python3 scripts/check_assets.py
 ./gradlew build
-```
+~~~
 
-The patch project uses the ReVanced Patches Gradle plugin (`app.revanced.patches`) and Patcher APIs from the official template. Once built, the output is a **patch bundle**, not an APK. For use with a legally obtained YouTube Music installation, choose compatible patcher and app versions. **This source does not include or automate modifying an APK**, and current runtime compatibility has not yet been confirmed.
+Результат — пакет патчей, а не модифицированный APK YouTube Music. Совместимость с конкретной версией приложения отдельно не подтверждена.
 
-GitHub Actions → **Build omo patches** checks the project and uploads build outputs if compilation succeeds.
+## Авторство и лицензии
 
-## Structure
+Основой native-клиента является [Metrolist](https://github.com/MetrolistGroup/Metrolist), распространяемый по GNU GPL v3. Исходники и оригинальные лицензии сохранены; точная импортированная ревизия указана в [native/UPSTREAM.md](native/UPSTREAM.md).
 
-```text
-assets/omo-icon.svg            original vector logo
-patches/src/main/kotlin/...    branding + dark-theme Kotlin patches
-patches/src/main/resources/omo/  adaptive/monochrome icon resources
-scripts/check_assets.py        no-dependency resource and source validation
-.github/workflows/build.yml    tests + Gradle compilation + patch artifacts
-```
+Собственные патчи и оформление omo — W0rd3r566 и участники проекта. При распространении сборок и модификаций соблюдайте GPL и лицензии сторонних компонентов.
 
-## Roadmap (not implemented)
-
-- Compatibility tests against a current locally supplied YouTube Music APK.
-- Verify a separate application ID so it can coexist with a user's existing player.
-- Optional layout customization and animations where the target app's implementation permits them.
-- Media player visual customization, but only after version-specific feasibility testing.
-
-A ReVanced patch does **not** automatically enable premium/subscription features, provide a Google login mechanism, or give full control of the closed-source UI.
-
-## Credits and license
-
-Original project by **W0rd3r566**. Build conventions were taken from [ReVanced Patches Template](https://github.com/ReVanced/revanced-patches-template); that project and its authors are credited. Licensed **GPL-3.0-or-later**. `omo` is not affiliated with Google, YouTube, YouTube Music or ReVanced. All third-party trademarks belong to their respective owners.
+omo Music не является продуктом Google, YouTube, Metrolist или ReVanced. Работа с YouTube Music через сторонний клиент может нарушать условия сервиса и зависеть от изменений его API.
