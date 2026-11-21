@@ -2,7 +2,7 @@ name: Test Android 17-compatible omo Music engine
 
 on:
   push:
-    branches: [fix/android17-intertune]
+    branches: [main, fix/android17-intertune]
     paths:
       - 'scripts/import_android17.py'
       - '.github/workflows/android17-bootstrap.yml'
@@ -49,13 +49,13 @@ jobs:
           APK=$(find client-next/app/build/outputs/apk/core/debug -name '*universal*.apk' -print -quit)
           if [ -z "$APK" ]; then APK=$(find client-next/app/build/outputs/apk/core/debug -name '*.apk' -print -quit); fi
           test -n "$APK"
-          apksigner verify --verbose "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
           echo "Validated APK $APK"
           zipinfo -1 "$APK" | grep '^lib/' | head -40 || true
-      - name: Publish tested Pixel/Universal APK
+      - name: Upload test APK before persisting sources
         uses: actions/upload-artifact@v4
         with:
-          name: omo-music-android17-arm64
+          name: omo-music-intertune-android17
           path: |
             client-next/app/build/outputs/apk/core/debug/*arm64-v8a*.apk
             client-next/app/build/outputs/apk/core/debug/*universal*.apk
@@ -71,3 +71,10 @@ jobs:
             git pull --rebase origin fix/android17-intertune
             git push origin HEAD:fix/android17-intertune
           fi
+      - name: Publish APK test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omo-music-android17-test
+          path: client-next/app/build/outputs/apk/core/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
