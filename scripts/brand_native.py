@@ -59,6 +59,24 @@ def main():
         raise RuntimeError("Could not disable upstream Discord application ID.")
     build_file.write_text(build_text, encoding="utf-8")
 
+    replace_exact("gradle.properties", "appVersion=14.0.1", "appVersion=0.1.0")
+    replace_exact("androidApp/build.gradle.kts", "versionCode = 155", "versionCode = 1")
+
+    # Shared Material 3 Expressive fallback palette: graphite + quiet sky blue.
+    theme = "shared/src/commonMain/kotlin/com/metrolist/shared/ui/theme/Theme.kt"
+    for old, new in (
+        ("0xFF1B5E20", "0xFF216580"),
+        ("0xFF388E3C", "0xFF4D7182"),
+        ("0xFFF1F8E9", "0xFFFAF9F7"),
+        ("0xFF212121", "0xFF1D2024"),
+        ("0xFF81C784", "0xFFA7D7FF"),
+        ("0xFFA5D6A7", "0xFFB5CBD9"),
+        ("0xFF101010", "0xFF0A0B0C"),
+        ("0xFFEFEFEF", "0xFFE8EBEF"),
+        ("0xFF121212", "0xFF13161A"),
+    ):
+        replace_exact(theme, old, new)
+
     # First-run defaults. All remain changeable in the existing Appearance UI.
     preferences = "shared/src/commonMain/kotlin/com/metrolist/shared/settings/Settings.kt"
     for old, new in (
