@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="omo_accent">Цветовой акцент omo</string>
+    <string name="omo_corners">Форма элементов</string>
+    <string name="omo_home_subtitle">Твоя музыка. Твои правила.</string>
+    <string name="omo_customize">Оформление</string>
+</resources>

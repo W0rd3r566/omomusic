@@ -1,43 +1,47 @@
 # omo Music
 
-**omo** — независимые ReVanced-патчи оформления для YouTube Music. Основа проекта — [официальный шаблон ReVanced Patches](https://github.com/ReVanced/revanced-patches-template) и его Patcher API. Фирменный стиль: чёрный фон, округлая надпись **omo** и маленький голубой знак Play.
+**omo Music** — независимый музыкальный клиент для Android на **Kotlin + Jetpack Compose**. Это **устанавливаемое приложение**, не ReVanced-патчи, WebView или модифицированный APK YouTube Music.
 
-> **Статус:** переход на ReVanced-first. Исходники и GitHub Actions для сборки пакета патчей находятся здесь. Совместимость с текущими версиями YouTube Music ещё нужно подтвердить. Это **не APK и не новый открытый клиент YouTube Music**: сам YouTube Music не имеет открытых исходников.
+Визуальный язык: **Material 3 Expressive**, graphite/black, плавные формы и аккуратные голубые акценты. Исходники открыты.
 
-## Что делает omo
+## Разработка
 
-| Патч | Действие |
-| --- | --- |
-| **omo Branding** | Ставит название `omo`, адаптивную иконку, монохромный слой и голубой Play |
-| **omo Black** | Изменяет известные тёмные цветовые ресурсы на чёрно-графитовую палитру |
+Основной Android-проект расположен в **[client/](client/)**.
 
-Оба патча работают с ресурсами приложения. Код Google, вход в аккаунт и механизмы платного доступа здесь не распространяются и не изменяются.
+- **Музыка:** поиск YouTube Music, очередь, фоновое воспроизведение, плейлисты, локальная медиатека, рекомендации и управление через системную медиасессию реализуются на базе открытого движка [OuterTune](https://github.com/OuterTune/OuterTune) (основан на InnerTune).
+- **Новый интерфейс omo:** собственная стартовая панель с переходами к поиску и настройкам; чёрно-графитовая тема, фирменный голубой акцент, оригинальная иконка.
+- **Настройка оформления:** пять акцентных палитр (Sky, Mint, Lavender, Coral, Amber), три пресета скругления (Soft, Expressive, Round), системная/тёмная/светлая тема, адаптация под цвета обложки и другие параметры движка. Предпочтения сохраняются в Android DataStore.
+- **Сборка:** отдельный application ID `dev.w0rd3r.omomusic`, GitHub Actions собирает Android debug APK.
 
-**Про Material 3 Expressive:** полноценная замена навигации, экрана плеера и анимаций невозможна лишь изменением нескольких XML-ресурсов. Для такой UI-переработки нужны отдельные проверенные bytecode-патчи под определённые версии приложения. Не выдаём перекраску за готовый Material 3.
+Важное уточнение: текущая версия — ранняя разработка. Наличие кода не подтверждает успешную сборку, работу всех YouTube Music функций или стабильность на реальном телефоне.
 
-## Сборка ReVanced-патчей
+## Сборка из исходников
 
-Нужны JDK 17, Gradle Wrapper из репозитория, доступ к зависимостям ReVanced через GitHub Packages.
+Требуются **JDK 21**, **Android SDK API 37.0**, доступ к Maven Central и Google Maven. Проект использует Gradle Wrapper и Kotlin.
 
 ```bash
 git clone https://github.com/W0rd3r566/omomusic.git
-cd omomusic
-python3 scripts/check_assets.py
-./gradlew :patches:buildAndroid
+cd omomusic/client
+chmod +x gradlew
+./gradlew :app:assembleCoreDebug
 ```
 
-**GitHub Actions:** [Build omo ReVanced patches](https://github.com/W0rd3r566/omomusic/actions/workflows/build.yml) — после успешной сборки можно забрать артефакт `omo-revanced-patches` (файл `.rvp`). Этот пакет предназначен для совместимого ReVanced Patcher и самостоятельно полученного совместимого приложения. **APK не создаётся** и не распространяется.
+После успешной сборки APK появится в `client/app/build/outputs/apk/core/debug/`.
+
+**[GitHub Actions: Build omo Music Android APK](https://github.com/W0rd3r566/omomusic/actions/workflows/omo-build.yml)** — артефакт `omo-music-android-debug` прикрепляется только при успешном завершении.
 
 ## Структура
 
-- `patches/src/main/kotlin/dev/w0rd3r/omo/patches/` — Kotlin-патчи
-- `patches/src/main/resources/omo/` — исходники иконки и Android XML-ресурсы
-- `assets/omo-icon.svg` — логотип
-- `scripts/check_assets.py` — статическая проверка ресурсов
-- `native/` — **неактивный эксперимент** с Metrolist; **не используется** в ReVanced-сборке и не является актуальным кодом omo
+| Путь | Содержимое |
+| --- | --- |
+| `client/app/` | Код Kotlin, Compose UI, Media3 и ресурсы Android |
+| `client/material-color-utilities/` | Цветовые инструменты движка |
+| `client/UPSTREAM.md` | Ссылка на upstream и точный исходный коммит |
+| `client/LICENSE` | Лицензия открытой основы |
+| `scripts/import_omo_android.py` | Первичный импорт открытого движка (дальнейшие доработки — в клиенте) |
+| `assets/` | Оригинальная графика |
+| `patches/`, `native/` | Старые эксперименты, не входят в сборку текущего клиента |
 
-## Авторство
+## Лицензия и авторство
 
-omo Music — W0rd3r566 и участники проекта, GPL-3.0-or-later. Сборочная инфраструктура основана на [ReVanced Patches Template](https://github.com/ReVanced/revanced-patches-template), GPL-3.0. Проект не аффилирован с Google, YouTube Music или ReVanced.
-
-Использование сторонних патчей может зависеть от версий YouTube Music и условий сервиса.
+Основа проигрывателя — OuterTune/InnerTune, **GPL-3.0**, с сохранёнными upstream copyright notices и лицензией; [указанная ревизия](client/UPSTREAM.md). Собственные модификации omo Music — © 2026 W0rd3r566, GPL-3.0-or-later. Проект не аффилирован с Google, YouTube или ReVanced.
