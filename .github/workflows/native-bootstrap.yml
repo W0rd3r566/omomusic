@@ -24,15 +24,24 @@ jobs:
         with:
           persist-credentials: true
       - name: Import Metrolist and apply omo theme
-        run: python3 scripts/import_native.py
+        run: |
+          if [ ! -f native/UPSTREAM.md ]; then
+            python3 scripts/import_native.py
+          else
+            echo 'Native source already imported; skipping.'
+          fi
       - name: Publish source snapshot to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add native/
-          git commit -m "feat(native): import GPL Metrolist sources with omo branding"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(native): import GPL Metrolist sources with omo branding"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          else
+            echo 'No new sources to publish.'
+          fi
 
   build:
     name: Build Android debug APK
@@ -51,7 +60,7 @@ jobs:
       - name: Install Android SDK
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-37" "build-tools;37.0.0"
+          sdkmanager "platforms;android-37.1" "build-tools;37.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - name: Assemble omo Music
         working-directory: native
