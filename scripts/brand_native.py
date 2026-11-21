@@ -114,7 +114,7 @@ def main():
     for path in catalog_root.rglob("strings.xml"):
         if path.parent.name.startswith("values"):
             original = path.read_text(encoding="utf-8")
-            rewritten = original.replace("Metrolist", "omo Music")
+            rewritten = re.sub(r"(?<![A-Za-z0-9])Metrolist(?![A-Za-z0-9])", "omo Music", original)
             if rewritten != original:
                 path.write_text(rewritten, encoding="utf-8")
                 edited += 1
