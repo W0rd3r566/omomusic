@@ -1,0 +1,51 @@
+name: Build omo Music Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+      - '.github/workflows/omo-build.yml'
+  pull_request:
+    paths:
+      - 'client/**'
+      - '.github/workflows/omo-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omo-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Compile native omo APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4
+      - name: Install Android 37 SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platforms;android-37"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile core debug APK
+        working-directory: client
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleCoreDebug --no-daemon --max-workers=2 --stacktrace -DskipFormatKtlint
+      - name: Upload installable Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: omo-music-android-debug
+          path: client/app/build/outputs/apk/core/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
