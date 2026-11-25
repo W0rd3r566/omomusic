@@ -56,9 +56,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: omo-music-intertune-android17
-          path: |
-            client-next/app/build/outputs/apk/core/debug/*arm64-v8a*.apk
-            client-next/app/build/outputs/apk/core/debug/*universal*.apk
+          path: client-next/app/build/outputs/apk/core/debug/*.apk
           if-no-files-found: error
           retention-days: 14
       - name: Preserve complete source snapshot
