@@ -58,20 +58,23 @@ def main():
         app = DEST / "app/build.gradle.kts"
         replace(app, 'applicationId = "dev.skye.intertune"',
                 'applicationId = "dev.w0rd3r.omomusic"')
-        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.0"')
-        replace(app, 'versionCode = 103', 'versionCode = 2')
+        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.1"')
+        replace(app, 'versionCode = 103', 'versionCode = 3')
         replace(app, 'var outputFileName = "InterTune-', 'var outputFileName = "omoMusic-')
         replace(DEST / "app/src/main/res/values/app_name.xml",
-                'name="app_name">InterTune<', 'name="app_name">omo Music<')
+                'name="app_name">InterTune<', 'name="app_name">Omo music<')
         replace(DEST / "app/src/debug/res/values/app_name.xml",
-                "InterTune Debug", "omo Music Debug")
+                "InterTune Debug", "Omo music")
 
-        drawable = DEST / "app/src/main/res/drawable"
-        omo_assets = ROOT / "patches/src/main/resources/omo/drawable"
-        shutil.copy2(omo_assets / "omo_foreground.xml", drawable / "launcher_foreground.xml")
-        shutil.copy2(omo_assets / "omo_monochrome.xml", drawable / "launcher_monochrome.xml")
-        replace(DEST / "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
-                "@color/ic_launcher_background", "@android:color/black")
+        resources = DEST / "app/src/main/res"
+        for icon in (ROOT / "scripts/android17/res").glob("*/*"):
+            target = resources / icon.parent.name / icon.name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(icon, target)
+        manifest = DEST / "app/src/main/AndroidManifest.xml"
+        replace(manifest, 'android:icon="@mipmap/ic_launcher"', 'android:icon="@mipmap/omo_launcher"')
+        replace(manifest, 'android:roundIcon="@mipmap/ic_launcher_round"',
+                'android:roundIcon="@mipmap/omo_launcher"')
         replace(
             DEST / "app/src/main/java/com/dd3boh/outertune/ui/theme/Theme.kt",
             "val DefaultThemeColor = Color(0xFFED5564)",
@@ -128,7 +131,7 @@ def main():
             "Licensing: GPL-3.0.\n", encoding="utf-8"
         )
         (DEST / "README.md").write_text(
-            "# omo Music 0.2.0\n\n"
+            "# Omo music 0.2.1\n\n"
             "A native Kotlin / Jetpack Compose Android client with YouTube Music "
             "search, streaming, library and background playback provided by "
             "InterTune v0.12.11.\n\n"
@@ -144,6 +147,13 @@ def main():
             "    ./gradlew :app:assembleCoreDebug\n\n"
             "Choose an arm64-v8a or universal APK for a Pixel 9a. Device runtime "
             "and account sign-in require testing; compiling is not proof.\n\n"
+            "## Updatable releases\n\n"
+            "On a machine logged in as the repository maintainer with GitHub CLI, "
+            "run `bash scripts/android17/setup-release-signing.sh` from the repository root. "
+            "Keep a private backup of the generated signing files. "
+            "Run the Omo Music Android workflow with `signed_release=true` to publish "
+            "an `Omo-music-release` build artifact signed with that key. Future releases "
+            "must reuse the key and increase Android's version code.\n\n"
             "GPL-3.0 source attribution: see UPSTREAM.md and LICENSE.\n",
             encoding="utf-8",
         )
