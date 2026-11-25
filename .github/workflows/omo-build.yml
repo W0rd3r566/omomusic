@@ -5,10 +5,12 @@ on:
     branches: [main, fix/android17-intertune]
     paths:
       - 'scripts/import_android17.py'
+      - 'scripts/android17/**'
       - '.github/workflows/omo-build.yml'
   pull_request:
     paths:
       - 'scripts/import_android17.py'
+      - 'scripts/android17/**'
       - '.github/workflows/omo-build.yml'
   workflow_dispatch:
 

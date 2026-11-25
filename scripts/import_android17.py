@@ -77,47 +77,24 @@ def main():
             "val DefaultThemeColor = Color(0xFFED5564)",
             "val DefaultThemeColor = Color(0xFFA7D7FF)",
         )
-        # Reuse the original omo Compose home component rather than just rebadging InterTune.
+        replace(DEST / "gradle/libs.versions.toml",
+                'material3 = "1.4.0"', 'material3 = "1.5.0-alpha10"')
         ui_root = Path("app/src/main/java/com/dd3boh/outertune/ui")
-        old_hero = ROOT / "client" / ui_root / "omo/OmoHero.kt"
+        theme = DEST / ui_root / "theme/Theme.kt"
+        replace(theme, "import androidx.compose.material3.MaterialTheme",
+                "import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi\n"
+                "import androidx.compose.material3.MaterialExpressiveTheme\n"
+                "import androidx.compose.material3.MaterialTheme\n"
+                "import androidx.compose.material3.MotionScheme")
+        replace(theme, "@Composable\nfun OuterTuneTheme(",
+                "@OptIn(ExperimentalMaterial3ExpressiveApi::class)\n@Composable\nfun OuterTuneTheme(")
+        replace(theme, "    MaterialTheme(\n        colorScheme = colorScheme,",
+                "    MaterialExpressiveTheme(\n        colorScheme = colorScheme,\n"
+                "        motionScheme = MotionScheme.expressive(),")
+
         new_hero = DEST / ui_root / "omo/OmoHero.kt"
         new_hero.parent.mkdir(parents=True, exist_ok=True)
-        hero = old_hero.read_text(encoding="utf-8")
-        hero = hero.replace(
-            "import androidx.compose.material3.Text\n",
-            "import androidx.compose.material3.Text\nimport androidx.compose.material3.TextButton\n"
-        )
-        hero = hero.replace(
-            "import com.dd3boh.outertune.R\n",
-            "import com.dd3boh.outertune.R\n"
-            "import com.dd3boh.outertune.constants.InnerTubeCookieKey\n"
-            "import com.dd3boh.outertune.utils.rememberPreference\n"
-        )
-        hero = hero.replace(
-            "fun OmoHero(navController: NavController) {",
-            "fun OmoHero(navController: NavController) {\n"
-            '    val (loginCookie) = rememberPreference(InnerTubeCookieKey, defaultValue = "")'
-        )
-        marker = "            }\n        }\n    }\n}\n"
-        if marker not in hero:
-            raise RuntimeError("Original omo hero layout changed")
-        hero = hero.replace(marker, '''            }
-            TextButton(
-                onClick = {
-                    navController.navigate(if (loginCookie.isBlank()) "login" else "account")
-                },
-            ) {
-                Text(
-                    text = stringResource(
-                        if (loginCookie.isBlank()) R.string.login else R.string.account
-                    ),
-                )
-            }
-        }
-    }
-}
-''', 1)
-        new_hero.write_text(hero, encoding="utf-8")
+        shutil.copy2(ROOT / "scripts/android17/OmoHero.kt", new_hero)
 
         for locale in ("values", "values-ru"):
             source_strings = ROOT / "client/app/src/main/res" / locale / "omo_strings.xml"
