@@ -58,8 +58,8 @@ def main():
         app = DEST / "app/build.gradle.kts"
         replace(app, 'applicationId = "dev.skye.intertune"',
                 'applicationId = "dev.w0rd3r.omomusic"')
-        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.3"')
-        replace(app, 'versionCode = 103', 'versionCode = 5')
+        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.4"')
+        replace(app, 'versionCode = 103', 'versionCode = 6')
         replace(app, 'var outputFileName = "InterTune-', 'var outputFileName = "omoMusic-')
         replace(DEST / "app/src/main/res/values/app_name.xml",
                 'name="app_name">InterTune<', 'name="app_name">Omo music<')
@@ -212,9 +212,18 @@ internal data class OmoChannelsBody(
 )
 """, encoding="utf-8")
         inner = innertube / "InnerTube.kt"
-        replace(inner, "    suspend fun accountMenu(client: YouTubeClient)", """    suspend fun omoAccounts() = httpClient.post("account/accounts_list") {
+        replace(inner, "fun HttpRequestBuilder.ytClient(client: YouTubeClient, setLogin: Boolean = false)",
+                "fun HttpRequestBuilder.ytClient(client: YouTubeClient, setLogin: Boolean = false, "
+                "origin: String = YouTubeClient.ORIGIN_YOUTUBE_MUSIC)")
+        replace(inner, 'append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)',
+                'append("X-Origin", origin)')
+        replace(inner, 'append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)',
+                'append("Referer", "$origin/")')
+        replace(inner, '${YouTubeClient.ORIGIN_YOUTUBE_MUSIC}")', '$origin")')
+        replace(inner, "    suspend fun accountMenu(client: YouTubeClient)", """    suspend fun omoAccounts() = httpClient.post("https://www.youtube.com/youtubei/v1/account/accounts_list") {
         val client = YouTubeClient.WEB.copy(loginSupported = true)
-        ytClient(client, setLogin = true)
+        ytClient(client, setLogin = true, origin = "https://www.youtube.com")
+        header("Origin", "https://www.youtube.com")
         setBody(OmoChannelsBody(client.toContext(locale, visitorData, null)))
     }
 
@@ -263,11 +272,11 @@ internal data class OmoChannelsBody(
         replace(updates, "ItzSkyeYT/InterTune", "W0rd3r566/omomusic")
         replace(updates, 'Regex("""-release-', 'Regex("""^Omo-music-release-')
         for locale, labels in (
-            ("values", ("YouTube channels", "Could not verify this channel. Try again.", "No music video is available for this song.")),
-            ("values-ru", ("Каналы YouTube", "Не удалось подтвердить канал. Попробуй ещё раз.", "Для этой песни нет доступного клипа.")),
+            ("values", ("YouTube channels", "Could not verify this channel. Try again.", "No music video is available for this song.", "Could not load the video.")),
+            ("values-ru", ("Каналы YouTube", "Не удалось подтвердить канал. Попробуй ещё раз.", "Для этой песни нет доступного клипа.", "Не удалось загрузить клип.")),
         ):
             strings = DEST / "app/src/main/res" / locale / "omo_strings.xml"
-            names = ("omo_channels", "omo_channel_error", "omo_no_clip")
+            names = ("omo_channels", "omo_channel_error", "omo_no_clip", "omo_clip_error")
             replace(strings, "</resources>", "".join(
                 f'    <string name="{key}">{value}</string>\n' for key, value in zip(names, labels)
             ) + "</resources>")

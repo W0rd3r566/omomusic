@@ -84,24 +84,30 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
             selected = video != null,
             shape = SegmentedButtonDefaults.itemShape(1, 2), icon = {},
             onClick = {
-            val item = player.currentMediaItem ?: return@SegmentedButton
-            video = VideoSession(
-                mediaId = item.mediaId,
-                startSeconds = player.currentPosition.coerceAtLeast(0) / 1000,
-                resumeAudio = player.playWhenReady,
-            )
-            player.pause()
-        },
+                val item = player.currentMediaItem ?: return@SegmentedButton
+                video = VideoSession(
+                    mediaId = item.mediaId,
+                    startSeconds = player.currentPosition.coerceAtLeast(0) / 1000,
+                    resumeAudio = player.playWhenReady,
+                )
+                player.pause()
+            },
         ) { Text(stringResource(R.string.filter_videos)) }
     }
 
     video?.let { session ->
-        val targetId by produceState<String?>(null, session) {
+        var attempt by remember(session) { mutableStateOf(0) }
+        var lookupFailed by remember(session) { mutableStateOf(false) }
+        val targetId by produceState<String?>(null, session, attempt) {
+            value = null
+            lookupFailed = false
             val counterpart = try {
-                withTimeoutOrNull(4500) { YouTube.videoCounterpart(videoId) }
+                withTimeoutOrNull(6500) { YouTube.videoCounterpart(videoId).orEmpty() }
+                    ?: throw java.io.IOException("Video lookup timed out")
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
+                lookupFailed = true
                 null
             }
             value = counterpart?.takeIf(youtubeId::matches).orEmpty()
@@ -154,7 +160,10 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
                             Modifier.align(Alignment.CenterHorizontally).padding(24.dp),
                         )
                     } else if (target.isEmpty()) {
-                        Text(stringResource(R.string.omo_no_clip), Modifier.padding(20.dp))
+                        if (lookupFailed) {
+                            Text(stringResource(R.string.omo_clip_error), Modifier.padding(horizontal = 20.dp))
+                            TextButton(onClick = { attempt++ }) { Text(stringResource(R.string.retry)) }
+                        } else Text(stringResource(R.string.omo_no_clip), Modifier.padding(20.dp))
                     } else AndroidView(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 270.dp),
                         factory = { context ->
