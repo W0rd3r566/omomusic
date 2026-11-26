@@ -58,8 +58,8 @@ def main():
         app = DEST / "app/build.gradle.kts"
         replace(app, 'applicationId = "dev.skye.intertune"',
                 'applicationId = "dev.w0rd3r.omomusic"')
-        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.4"')
-        replace(app, 'versionCode = 103', 'versionCode = 6')
+        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.5"')
+        replace(app, 'versionCode = 103', 'versionCode = 7')
         replace(app, 'var outputFileName = "InterTune-', 'var outputFileName = "omoMusic-')
         replace(DEST / "app/src/main/res/values/app_name.xml",
                 'name="app_name">InterTune<', 'name="app_name">Omo music<')
@@ -102,7 +102,7 @@ def main():
         player = DEST / ui_root / "player/Player.kt"
         replace(player, "import com.dd3boh.outertune.playback.PlayerConnection\n",
                 "import com.dd3boh.outertune.playback.PlayerConnection\n"
-                "import com.dd3boh.outertune.ui.omo.OmoVideoAction\n")
+                "import com.dd3boh.outertune.ui.omo.OmoArtwork\n")
         for layout in ("3.2a", "3.2b"):
             marker = (
                 "                        Log.v(TAG, \"PLR-" + layout + "\")\n"
@@ -113,17 +113,14 @@ def main():
                 end = text.index("\n                    }\n\n                    Column(", start)
             else:
                 end = text.index("\n                        // Laid over the empty top right corner", start)
-            action = """
-                        if (state.isExpanded) {
-                            OmoVideoAction(
-                                metadata = mediaMetadata,
-                                player = playerConnection.player,
-                                modifier = Modifier.align(Alignment.TopCenter)
-                                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
-                            )
-                        }
-"""
-            player.write_text(text[:end] + action + text[end:], encoding="utf-8")
+            start += len(marker)
+            artwork = text[start:end].rstrip()
+            enabled = "state.isExpanded && !showLyrics"
+            if layout == "3.2b":
+                enabled += " && (!compactPlayer || compactCoverFits(maxHeight))"
+            wrapper = f"                        OmoArtwork(mediaMetadata, playerConnection.player, {enabled}) {{\n"
+            wrapped = "\n".join("    " + line if line.strip() else "" for line in artwork.splitlines())
+            player.write_text(text[:start] + wrapper + wrapped + "\n                        }\n" + text[end:], encoding="utf-8")
 
         innertube = DEST / "innertube/src/main/java/com/zionhuang/innertube"
         replace(innertube / "models/PlaylistPanelRenderer.kt",
@@ -281,6 +278,81 @@ internal data class OmoChannelsBody(
                 f'    <string name="{key}">{value}</string>\n' for key, value in zip(names, labels)
             ) + "</resources>")
 
+        shutil.copy2(ROOT / "scripts/android17/OmoShapes.kt", new_hero.parent / "OmoShapes.kt")
+        thumbnail = DEST / ui_root / "player/Thumbnail.kt"
+        replace(thumbnail, "contentDescription = null,\n                            modifier = Modifier.fillMaxSize()",
+                "contentDescription = null,\n                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,\n                            modifier = Modifier.fillMaxSize()")
+        main_package = DEST / ui_root.parent
+        shape_import = "import com.dd3boh.outertune.ui.omo.OmoShape\nimport com.dd3boh.outertune.ui.omo.omoShape\n"
+        for target in (main_package / "MainActivity.kt", player):
+            replace(target, "import androidx.compose.foundation.shape.RoundedCornerShape",
+                    shape_import + "import androidx.compose.foundation.shape.RoundedCornerShape")
+        replace(main_package / "MainActivity.kt", "RoundedCornerShape(if (slimNav) 26.dp else 28.dp)", "omoShape(OmoShape.Dock)")
+        replace(player, "    val glassIntensity by", "    val controlsShape = omoShape(OmoShape.Buttons)\n    val glassIntensity by")
+        replace(player, "RoundedCornerShape(32.dp)", "controlsShape")
+        replace(player, ".clip(RoundedCornerShape(playPauseRoundness))", ".clip(controlsShape)")
+        replace(DEST / ui_root / "screens/settings/LookAndFeelSettings.kt", "            ThemeAppFrag()",
+                "            ThemeAppFrag()\n            com.dd3boh.outertune.ui.omo.OmoShapeSettings()")
+        replace(main_package / "constants/Unreleased.kt", "val WIDGETS_PAGE = BuildConfig.DEBUG", "val WIDGETS_PAGE = true")
+        cover_loader = main_package / "utils/SessionBitmapLoader.kt"
+        replace(cover_loader, "    systemCoverSize(bitmap.width, bitmap.height, px)?.let { (w, h) -> Bitmap.createScaledBitmap(bitmap, w, h, true) } ?: bitmap",
+                """    minOf(bitmap.width, bitmap.height).let { side ->
+        val square = if (bitmap.width == bitmap.height) bitmap else Bitmap.createBitmap(
+            bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side)
+        if (px > 0 && side > px) Bitmap.createScaledBitmap(square, px, px, true) else square
+    }""")
+        for locale, labels in (("values", ("Navigation bar roundness", "Player button roundness")),
+                               ("values-ru", ("Скругление нижней панели", "Скругление кнопок плеера"))):
+            strings = DEST / "app/src/main/res" / locale / "omo_strings.xml"
+            replace(strings, "</resources>", "".join(
+                f'    <string name="{key}">{label} · %1$d%%</string>\n'
+                for key, label in zip(("omo_dock_shape", "omo_controls_shape"), labels)
+            ) + "</resources>")
+
+        import re
+        for xml in resources.glob("values*/*.xml"):
+            original = xml.read_text(encoding="utf-8")
+            # Keep external links, file paths, preference keys and third-party credits intact.
+            def brand(match):
+                value = match.group()
+                if any(word in value.lower() for word in ("copyright", "licensed", "fork of", "based on", "credits")):
+                    return value
+                return re.sub(r"(?<![\w./])(?:InterTune|OuterTune)(?![\w./])", "Omo music", value)
+            changed = re.sub(r"(?<=>)[^<>]+(?=<)", brand, original)
+            if changed != original:
+                xml.write_text(changed, encoding="utf-8")
+        for name in ("launcher_monochrome", "launcher_foreground"):
+            shutil.copy2(resources / "drawable/small_icon.xml", resources / f"drawable/{name}.xml")
+        for image in resources.glob("mipmap-*/ic_launcher*.png"):
+            shutil.copy2(resources / "drawable-nodpi/omo_wordmark.png", image)
+        about = DEST / ui_root / "screens/settings/AboutScreen.kt"
+        page = about.read_text(encoding="utf-8")
+        start = page.index("        // A fork's build")
+        end = page.index("        Row(verticalAlignment = Alignment.CenterVertically)", start)
+        about.write_text(page[:start] + """        Image(
+            painter = painterResource(R.drawable.omo_wordmark),
+            contentDescription = stringResource(R.string.app_name),
+            modifier = Modifier.size(96.dp).clip(CircleShape)
+        )
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
+
+""" + page[end:], encoding="utf-8")
+        if "import androidx.compose.foundation.layout.size" not in about.read_text() and "import androidx.compose.foundation.layout.*" not in about.read_text():
+            replace(about, "import androidx.compose.runtime.Composable", "import androidx.compose.foundation.layout.size\nimport androidx.compose.runtime.Composable")
+        widgets = main_package / "widget/WidgetConfigActivity.kt"
+        replace(widgets, "            // The style first:", """            Section(stringResource(R.string.omo_presets))
+            TextButton(onClick = { s = WidgetSettings(style = WidgetStyle.COVER,
+                buttons = WidgetButtons.PLAY_ONLY, background = WidgetBackground.SYSTEM,
+                showArtwork = false, showLike = false) }) { Text(stringResource(R.string.omo_mini)) }
+            TextButton(onClick = { s = WidgetSettings(style = WidgetStyle.SHELF, look = ShelfLook.RECORDS,
+                list = WidgetList.RECENT) }) { Text(stringResource(R.string.omo_records)) }
+            // The style first:""")
+        for locale, labels in (("values", ("Widget presets", "Compact player", "Recent records")),
+                               ("values-ru", ("Варианты виджета", "Компактный плеер", "Недавние пластинки"))):
+            target = resources / locale / "omo_strings.xml"
+            replace(target, "</resources>", "".join(
+                f'<string name="{key}">{label}</string>\n' for key, label in
+                zip(("omo_presets", "omo_mini", "omo_records"), labels)) + "</resources>")
         home = DEST / ui_root / "screens/HomeScreen.kt"
         text = home.read_text(encoding="utf-8")
         needle = "import com.dd3boh.outertune.LocalPlayerAwareWindowInsets"
