@@ -58,8 +58,8 @@ def main():
         app = DEST / "app/build.gradle.kts"
         replace(app, 'applicationId = "dev.skye.intertune"',
                 'applicationId = "dev.w0rd3r.omomusic"')
-        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.5"')
-        replace(app, 'versionCode = 103', 'versionCode = 7')
+        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.6"')
+        replace(app, 'versionCode = 103', 'versionCode = 8')
         replace(app, 'var outputFileName = "InterTune-', 'var outputFileName = "omoMusic-')
         replace(DEST / "app/src/main/res/values/app_name.xml",
                 'name="app_name">InterTune<', 'name="app_name">Omo music<')
@@ -353,6 +353,35 @@ internal data class OmoChannelsBody(
             replace(target, "</resources>", "".join(
                 f'<string name="{key}">{label}</string>\n' for key, label in
                 zip(("omo_presets", "omo_mini", "omo_records"), labels)) + "</resources>")
+        service = main_package / "playback/MusicService.kt"
+        controls = main_package / "playback/MediaControlButtons.kt"
+        replace(controls, "    const val SLOTS = 2", """    const val SLOTS = 2
+    val showExtrasKey = androidx.datastore.preferences.core.booleanPreferencesKey("omo_notification_extras")""")
+        replace(service, "    private var mediaControlButtons =", "    private var showExtraButtons = true\n    private var mediaControlButtons =")
+        replace(service, "        mediaControlButtons = MediaControlButtons.parse(dataStore[MediaControlButtonsKey])",
+                """        showExtraButtons = dataStore[MediaControlButtons.showExtrasKey] ?: true
+        dataStore.data.map { it[MediaControlButtons.showExtrasKey] ?: true }.distinctUntilChanged()
+            .collect(scope) { show ->
+                if (show != showExtraButtons) {
+                    showExtraButtons = show
+                    updateNotification()
+                }
+            }
+        mediaControlButtons = MediaControlButtons.parse(dataStore[MediaControlButtonsKey])""")
+        replace(service, "if (inCar) MediaControlButtons.CAR else MediaControlButtons.layout(mediaControlButtons)",
+                "if (inCar) MediaControlButtons.CAR else if (showExtraButtons) MediaControlButtons.layout(mediaControlButtons) else emptyList()")
+        frag = DEST / ui_root / "screens/settings/fragments/MediaControlButtonsFrag.kt"
+        replace(frag, "    val chosen = remember(saved)", """    val (showExtras, setShowExtras) = rememberPreference(MediaControlButtons.showExtrasKey, true)
+    com.dd3boh.outertune.ui.component.SwitchPreference(
+        title = { Text(stringResource(R.string.omo_extra_buttons)) },
+        checked = showExtras, onCheckedChange = setShowExtras,
+        icon = { Icon(Icons.Rounded.ScreenLockPortrait, null) },
+    )
+    if (!showExtras) return
+    val chosen = remember(saved)""")
+        for locale, label in (("values", "Extra media notification buttons"), ("values-ru", "Дополнительные кнопки в уведомлении")):
+            replace(resources / locale / "omo_strings.xml", "</resources>",
+                    f'<string name="omo_extra_buttons">{label}</string>\n</resources>')
         home = DEST / ui_root / "screens/HomeScreen.kt"
         text = home.read_text(encoding="utf-8")
         needle = "import com.dd3boh.outertune.LocalPlayerAwareWindowInsets"
