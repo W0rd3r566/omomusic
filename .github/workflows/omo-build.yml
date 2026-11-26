@@ -2,7 +2,7 @@ name: Build omo Music Android (InterTune engine)
 
 on:
   push:
-    branches: [main, fix/android17-intertune]
+    branches: [main, fix/android17-intertune, release/omo-music]
     paths:
       - 'scripts/import_android17.py'
       - 'scripts/android17/**'
@@ -26,6 +26,8 @@ jobs:
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      OMO_SIGNED_RELEASE: ${{ inputs.signed_release || (github.event_name == 'push' && github.repository == 'W0rd3r566/omomusic' && github.ref == 'refs/heads/release/omo-music') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,13 +49,13 @@ jobs:
           test -f client-next/app/build.gradle.kts
           test -f client-next/innertube/build.gradle.kts
       - name: Compile omo Music debug
-        if: ${{ !inputs.signed_release }}
+        if: env.OMO_SIGNED_RELEASE != 'true'
         working-directory: client-next
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleCoreDebug --no-daemon --max-workers=2 --stacktrace
       - name: Verify APK signature
-        if: ${{ !inputs.signed_release }}
+        if: env.OMO_SIGNED_RELEASE != 'true'
         id: apk
         run: |
           shopt -s nullglob
@@ -69,7 +71,7 @@ jobs:
           zipinfo -1 "$apk" | grep '^lib/arm64-v8a/.*\.so$'
           echo "path=$apk" >> "$GITHUB_OUTPUT"
       - name: Upload signed core debug APK
-        if: ${{ !inputs.signed_release }}
+        if: env.OMO_SIGNED_RELEASE != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: omo-music-intertune-android17
@@ -77,7 +79,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Require release signing secrets
-        if: ${{ inputs.signed_release }}
+        if: env.OMO_SIGNED_RELEASE == 'true'
         env:
           OMO_RELEASE_KEYSTORE: ${{ secrets.OMO_RELEASE_KEYSTORE }}
           OMO_RELEASE_PASSWORD: ${{ secrets.OMO_RELEASE_PASSWORD }}
@@ -87,11 +89,11 @@ jobs:
             exit 1
           fi
       - name: Compile Omo music release
-        if: ${{ inputs.signed_release }}
+        if: env.OMO_SIGNED_RELEASE == 'true'
         working-directory: client-next
         run: ./gradlew :app:assembleCoreRelease --no-daemon --max-workers=2 --stacktrace
       - name: Sign and verify the release APK
-        if: ${{ inputs.signed_release }}
+        if: env.OMO_SIGNED_RELEASE == 'true'
         env:
           OMO_RELEASE_KEYSTORE: ${{ secrets.OMO_RELEASE_KEYSTORE }}
           OMO_RELEASE_PASSWORD: ${{ secrets.OMO_RELEASE_PASSWORD }}
@@ -104,7 +106,7 @@ jobs:
           fi
           bash scripts/android17/sign-release.sh "${apks[0]}" "$RUNNER_TEMP/Omo-music.apk"
       - name: Upload the updatable Omo music APK
-        if: ${{ inputs.signed_release }}
+        if: env.OMO_SIGNED_RELEASE == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Omo-music-release
