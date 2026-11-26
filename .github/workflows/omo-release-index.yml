@@ -1,0 +1,40 @@
+name: Select the latest Omo music APK
+on:
+  push:
+    branches: [release/omo-music]
+    paths: ['.github/workflows/omo-release-index.yml']
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Build omo Music Android (InterTune engine)']
+    types: [completed]
+    branches: [release/omo-music]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: omo-release-index
+  cancel-in-progress: false
+
+jobs:
+  latest:
+    if: github.repository == 'W0rd3r566/omomusic' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select the published signed APK with the highest Android version code
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          best=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --slurp | jq -r '
+            [ .[][] | select(.draft == false and .prerelease == false)
+              | .tag_name as $tag | select($tag | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
+              | .assets[] | select(.state == "uploaded" and .size > 0)
+              | (.name | capture("^Omo-music-release-(?<code>[0-9]+)\\.apk$").code | tonumber) as $code
+              | {tag: $tag, code: $code} ] | max_by(.code).tag // empty')
+          if [[ -n "$best" ]]; then
+            latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name' || true)
+            if [[ "$latest" != "$best" ]]; then
+              gh release edit "$best" --repo "$GITHUB_REPOSITORY" --latest
+            fi
+          fi
