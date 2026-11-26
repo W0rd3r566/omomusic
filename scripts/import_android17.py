@@ -58,8 +58,8 @@ def main():
         app = DEST / "app/build.gradle.kts"
         replace(app, 'applicationId = "dev.skye.intertune"',
                 'applicationId = "dev.w0rd3r.omomusic"')
-        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.2"')
-        replace(app, 'versionCode = 103', 'versionCode = 4')
+        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.3"')
+        replace(app, 'versionCode = 103', 'versionCode = 5')
         replace(app, 'var outputFileName = "InterTune-', 'var outputFileName = "omoMusic-')
         replace(DEST / "app/src/main/res/values/app_name.xml",
                 'name="app_name">InterTune<', 'name="app_name">Omo music<')
@@ -151,7 +151,11 @@ def main():
                 "    /** The queue a watch-next answer holds:",
                 """    suspend fun videoCounterpart(videoId: String): String? {
         val response = innerTube.next(WEB_REMIX, videoId, null, null, null, null).body<NextResponse>()
-        val wrapper = queueIn(response)?.contents.orEmpty()
+        val rows = queueIn(response)?.contents.orEmpty()
+        val direct = rows.firstNotNullOfOrNull { it.playlistPanelVideoRenderer?.takeIf { song -> song.videoId == videoId } }
+        val directType = direct?.musicVideoType
+        if (directType != null && directType != MUSIC_VIDEO_TYPE_ATV) return videoId
+        val wrapper = rows
             .firstNotNullOfOrNull { row ->
                 row.playlistPanelVideoWrapperRenderer?.takeIf {
                     it.primaryRenderer?.playlistPanelVideoRenderer?.videoId == videoId
@@ -159,7 +163,7 @@ def main():
             } ?: return null
         val primary = wrapper.primaryRenderer?.playlistPanelVideoRenderer
         val primaryType = primary?.navigationEndpoint?.watchEndpoint?.musicVideoType
-        if (primaryType != null && primaryType != MUSIC_VIDEO_TYPE_ATV) return null
+        if (primaryType != null && primaryType != MUSIC_VIDEO_TYPE_ATV) return videoId
         return wrapper.counterpart.firstNotNullOfOrNull { candidate ->
             val video = candidate.counterpartRenderer?.playlistPanelVideoRenderer
             val type = video?.navigationEndpoint?.watchEndpoint?.musicVideoType
@@ -186,6 +190,87 @@ def main():
                     f'    <string name="omo_return_to_song">{song}</string>\n'
                     f'    <string name="omo_open_youtube">{youtube}</string>\n'
                     '</resources>')
+
+        shutil.copy2(ROOT / "scripts/android17/OmoChannels.kt", new_hero.parent / "OmoChannels.kt")
+        shutil.copy2(ROOT / "scripts/android17/OmoChannel.kt", innertube / "OmoChannel.kt")
+        account = DEST / ui_root / "screens/settings/fragments/AccountFrag.kt"
+        replace(account, "    // The row used to snap", """    if (isLoggedIn) {
+        com.dd3boh.outertune.ui.omo.OmoChannels(innerTubeCookie, accountChannelHandle)
+    }
+    // The row used to snap""")
+        body = innertube / "models/body/OmoChannelsBody.kt"
+        body.write_text("""package com.zionhuang.innertube.models.body
+
+import com.zionhuang.innertube.models.Context
+import kotlinx.serialization.Serializable
+
+@Serializable
+internal data class OmoChannelsBody(
+    val context: Context,
+    val requestType: String = "ACCOUNTS_LIST_REQUEST_TYPE_CHANNEL_SWITCHER",
+    val callCircumstance: String = "SWITCHING_USERS_FULL",
+)
+""", encoding="utf-8")
+        inner = innertube / "InnerTube.kt"
+        replace(inner, "    suspend fun accountMenu(client: YouTubeClient)", """    suspend fun omoAccounts() = httpClient.post("account/accounts_list") {
+        val client = YouTubeClient.WEB.copy(loginSupported = true)
+        ytClient(client, setLogin = true)
+        setBody(OmoChannelsBody(client.toContext(locale, visitorData, null)))
+    }
+
+    suspend fun accountMenu(client: YouTubeClient, identity: String? = accountId)""")
+        replace(inner, "setBody(AccountMenuBody(client.toContext(locale, visitorData, accountId)))",
+                "setBody(AccountMenuBody(client.toContext(locale, visitorData, identity)))")
+        replace(innertube / "YouTube.kt", "    suspend fun accountInfo(): Result<AccountInfo> = runCatching {",
+                """    suspend fun omoChannels(): List<OmoChannel> =
+        innerTube.omoAccounts().body<kotlinx.serialization.json.JsonObject>()
+            .parseAccountsListFallback().distinct()
+
+    suspend fun omoIdentity(channel: OmoChannel): Pair<String, AccountInfo> {
+        val raw = channel.dataSyncId.orEmpty()
+        val ids = listOfNotNull(raw.substringBefore("||"), raw.substringAfter("||", ""), channel.pageId, "")
+            .map(String::trim).distinct()
+        val expected = channel.channelHandle ?: channel.byline?.takeIf { it.startsWith("@") }
+        // With no handle the displayed name must identify just one row.
+        require(expected != null || omoChannels().count { it.name == channel.name } == 1)
+        for (id in ids.filter(String::isNotEmpty) + "") {
+            val info = accountInfo(id.ifEmpty { null }).getOrNull() ?: continue
+            if (expected?.equals(info.channelHandle, ignoreCase = true) ?: (channel.name == info.name)) {
+                return id to info
+            }
+        }
+        error("YouTube did not confirm the selected channel")
+    }
+
+    suspend fun accountInfo(identity: String? = innerTube.accountId): Result<AccountInfo> = runCatching {""")
+        replace(innertube / "YouTube.kt", "innerTube.accountMenu(WEB_REMIX).body<AccountMenuResponse>()",
+                "innerTube.accountMenu(WEB_REMIX, identity).body<AccountMenuResponse>()")
+        replace(player, """                    if (buttonsBesideTitle) {
+                        actionButtons()
+                    }
+                }
+
+                PlaybackOrder""", """                }
+                if (buttonsBesideTitle) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = hPadding),
+                        horizontalArrangement = Arrangement.End) { actionButtons() }
+                }
+
+                PlaybackOrder""")
+        updates = DEST / ui_root.parent / "utils/UpdateChecker.kt"
+        replace(updates, "if (!BuiltInKeys.official) return@withContext null",
+                'if (BuildConfig.APPLICATION_ID != "dev.w0rd3r.omomusic") return@withContext null')
+        replace(updates, "ItzSkyeYT/InterTune", "W0rd3r566/omomusic")
+        replace(updates, 'Regex("""-release-', 'Regex("""^Omo-music-release-')
+        for locale, labels in (
+            ("values", ("YouTube channels", "Could not verify this channel. Try again.", "No music video is available for this song.")),
+            ("values-ru", ("Каналы YouTube", "Не удалось подтвердить канал. Попробуй ещё раз.", "Для этой песни нет доступного клипа.")),
+        ):
+            strings = DEST / "app/src/main/res" / locale / "omo_strings.xml"
+            names = ("omo_channels", "omo_channel_error", "omo_no_clip")
+            replace(strings, "</resources>", "".join(
+                f'    <string name="{key}">{value}</string>\n' for key, value in zip(names, labels)
+            ) + "</resources>")
 
         home = DEST / ui_root / "screens/HomeScreen.kt"
         text = home.read_text(encoding="utf-8")

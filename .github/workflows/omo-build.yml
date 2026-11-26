@@ -113,3 +113,27 @@ jobs:
           path: ${{ runner.temp }}/Omo-music.apk
           if-no-files-found: error
           retention-days: 30
+
+  publish:
+    if: github.event_name == 'push' && github.repository == 'W0rd3r566/omomusic' && github.ref == 'refs/heads/release/omo-music'
+    needs: android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Omo-music-release
+      - name: Publish verified APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          aapt=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          package=$("$aapt" dump badging Omo-music.apk | sed -n '1p')
+          version=$(sed -n "s/.*versionName='\([^']*\)'.*/\1/p" <<< "$package")
+          code=$(sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" <<< "$package")
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$code" =~ ^[0-9]+$ ]]
+          mv Omo-music.apk "Omo-music-release-$code.apk"
+          gh release create "v$version" "Omo-music-release-$code.apk" --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --title "Omo music $version" --generate-notes --latest

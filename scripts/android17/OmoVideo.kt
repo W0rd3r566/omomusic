@@ -15,7 +15,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -71,9 +75,16 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
         }
     }
 
-    FilledTonalButton(
-        onClick = {
-            val item = player.currentMediaItem ?: return@FilledTonalButton
+    SingleChoiceSegmentedButtonRow(modifier = modifier) {
+        SegmentedButton(
+            selected = video == null, onClick = {},
+            shape = SegmentedButtonDefaults.itemShape(0, 2), icon = {},
+        ) { Text(stringResource(R.string.omo_return_to_song)) }
+        SegmentedButton(
+            selected = video != null,
+            shape = SegmentedButtonDefaults.itemShape(1, 2), icon = {},
+            onClick = {
+            val item = player.currentMediaItem ?: return@SegmentedButton
             video = VideoSession(
                 mediaId = item.mediaId,
                 startSeconds = player.currentPosition.coerceAtLeast(0) / 1000,
@@ -81,9 +92,7 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
             )
             player.pause()
         },
-        modifier = modifier,
-    ) {
-        Text(stringResource(R.string.filter_videos))
+        ) { Text(stringResource(R.string.filter_videos)) }
     }
 
     video?.let { session ->
@@ -95,15 +104,28 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
             } catch (_: Exception) {
                 null
             }
-            value = counterpart?.takeIf(youtubeId::matches) ?: videoId
+            value = counterpart?.takeIf(youtubeId::matches).orEmpty()
         }
         val target = targetId
         // Album tracks and their official videos can have different intros and cuts.
         val clipStart = if (target == videoId) session.startSeconds else 0L
+        var web by remember(session) { mutableStateOf<WebView?>(null) }
+        var clipPosition by remember(session) { mutableStateOf<Long?>(null) }
+        LaunchedEffect(web, target) {
+            val view = web ?: return@LaunchedEffect
+            if (target != videoId) return@LaunchedEffect
+            while (true) {
+                view.evaluateJavascript(
+                    "(function(){var v=document.querySelector('video');return v && v.readyState >= 2 && v.currentTime > 0 ? Math.floor(v.currentTime*1000) : null})()",
+                ) { result -> result.toLongOrNull()?.let { clipPosition = it } }
+                delay(500)
+            }
+        }
         fun returnToSong() {
             video = null
-            if (session.resumeAudio && player.currentMediaItem?.mediaId == session.mediaId) {
-                player.play()
+            if (player.currentMediaItem?.mediaId == session.mediaId) {
+                clipPosition?.let { player.seekTo(it) }
+                if (session.resumeAudio) player.play()
             }
         }
 
@@ -122,7 +144,7 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
                         }
                         TextButton(onClick = {
                             video = null
-                            uriHandler.openUri("https://www.youtube.com/watch?v=$target&t=${clipStart}s")
+                            uriHandler.openUri("https://www.youtube.com/watch?v=${target?.ifEmpty { videoId }}&t=${clipStart}s")
                         }, enabled = target != null) {
                             Text(stringResource(R.string.omo_open_youtube))
                         }
@@ -131,10 +153,13 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
                         CircularProgressIndicator(
                             Modifier.align(Alignment.CenterHorizontally).padding(24.dp),
                         )
+                    } else if (target.isEmpty()) {
+                        Text(stringResource(R.string.omo_no_clip), Modifier.padding(20.dp))
                     } else AndroidView(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 270.dp),
                         factory = { context ->
                             WebView(context).apply {
+                                web = this
                                 settings.javaScriptEnabled = true
                                 settings.domStorageEnabled = true
                                 settings.allowFileAccess = false
