@@ -58,8 +58,8 @@ def main():
         app = DEST / "app/build.gradle.kts"
         replace(app, 'applicationId = "dev.skye.intertune"',
                 'applicationId = "dev.w0rd3r.omomusic"')
-        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.1"')
-        replace(app, 'versionCode = 103', 'versionCode = 3')
+        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.2"')
+        replace(app, 'versionCode = 103', 'versionCode = 4')
         replace(app, 'var outputFileName = "InterTune-', 'var outputFileName = "omoMusic-')
         replace(DEST / "app/src/main/res/values/app_name.xml",
                 'name="app_name">InterTune<', 'name="app_name">Omo music<')
@@ -98,12 +98,46 @@ def main():
         new_hero = DEST / ui_root / "omo/OmoHero.kt"
         new_hero.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / "scripts/android17/OmoHero.kt", new_hero)
+        shutil.copy2(ROOT / "scripts/android17/OmoVideo.kt", new_hero.parent / "OmoVideo.kt")
+        player = DEST / ui_root / "player/Player.kt"
+        replace(player, "import com.dd3boh.outertune.playback.PlayerConnection\n",
+                "import com.dd3boh.outertune.playback.PlayerConnection\n"
+                "import com.dd3boh.outertune.ui.omo.OmoVideoAction\n")
+        for layout in ("3.2a", "3.2b"):
+            marker = (
+                "                        Log.v(TAG, \"PLR-" + layout + "\")\n"
+            )
+            text = player.read_text(encoding="utf-8")
+            start = text.index(marker)
+            if layout == "3.2a":
+                end = text.index("\n                    }\n\n                    Column(", start)
+            else:
+                end = text.index("\n                        // Laid over the empty top right corner", start)
+            action = """
+                        if (state.isExpanded) {
+                            OmoVideoAction(
+                                metadata = mediaMetadata,
+                                player = playerConnection.player,
+                                modifier = Modifier.align(Alignment.TopCenter)
+                                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
+                            )
+                        }
+"""
+            player.write_text(text[:end] + action + text[end:], encoding="utf-8")
 
         for locale in ("values", "values-ru"):
             source_strings = ROOT / "client/app/src/main/res" / locale / "omo_strings.xml"
             target_strings = DEST / "app/src/main/res" / locale / "omo_strings.xml"
             target_strings.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_strings, target_strings)
+            song, youtube = (
+                ("Песня", "Открыть в YouTube") if locale == "values-ru"
+                else ("Song", "Open in YouTube")
+            )
+            replace(target_strings, "</resources>",
+                    f'    <string name="omo_return_to_song">{song}</string>\n'
+                    f'    <string name="omo_open_youtube">{youtube}</string>\n'
+                    '</resources>')
 
         home = DEST / ui_root / "screens/HomeScreen.kt"
         text = home.read_text(encoding="utf-8")
@@ -131,7 +165,7 @@ def main():
             "Licensing: GPL-3.0.\n", encoding="utf-8"
         )
         (DEST / "README.md").write_text(
-            "# Omo music 0.2.1\n\n"
+            "# Omo music 0.2.2\n\n"
             "A native Kotlin / Jetpack Compose Android client with YouTube Music "
             "search, streaming, library and background playback provided by "
             "InterTune v0.12.11.\n\n"
