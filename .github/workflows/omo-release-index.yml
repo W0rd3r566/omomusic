@@ -1,4 +1,4 @@
-name: Select the latest signed Omo release
+name: Select the latest Omo music APK
 on:
   push:
     branches: [release/omo-music]
