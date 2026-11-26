@@ -53,11 +53,13 @@ internal fun OmoArtwork(
         artwork()
         return
     }
-    key(player, id) { InlineArtwork(id, player, artwork) }
+    key(player, id) { InlineArtwork(id, requireNotNull(metadata), player, artwork) }
 }
 
 @Composable
-private fun InlineArtwork(videoId: String, player: Player, artwork: @Composable () -> Unit) {
+private fun InlineArtwork(
+    videoId: String, metadata: MediaMetadata, player: Player, artwork: @Composable () -> Unit,
+) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val uriHandler = LocalUriHandler.current
     var video by remember { mutableStateOf<VideoSession?>(null) }
@@ -114,7 +116,9 @@ private fun InlineArtwork(videoId: String, player: Player, artwork: @Composable 
                     value = null
                     lookupFailed = false
                     val counterpart = try {
-                        withTimeoutOrNull(6500) { YouTube.videoCounterpart(videoId).orEmpty() }
+                        withTimeoutOrNull(9_500) {
+                            YouTube.videoCounterpart(videoId, metadata.title, metadata.artists.map { it.name }).orEmpty()
+                        }
                             ?: throw java.io.IOException("Video lookup timed out")
                     } catch (cancelled: CancellationException) {
                         throw cancelled
@@ -130,18 +134,20 @@ private fun InlineArtwork(videoId: String, player: Player, artwork: @Composable 
                 var web by remember(session) { mutableStateOf<WebView?>(null) }
 
                 var embedFailed by remember(attempt, target) { mutableStateOf(false) }
+                var embedReady by remember(attempt, target) { mutableStateOf(false) }
                 LaunchedEffect(web, target, attempt) {
                     val view = web ?: return@LaunchedEffect
                     var emptyChecks = 0
                     while (true) {
                         view.evaluateJavascript(
-                            "(function(){var v=document.querySelector('video');return v && v.readyState >= 1 ? Math.floor(v.currentTime*1000) : -1})()",
+                            "window.omoPlaybackStatus ? window.omoPlaybackStatus() : -1",
                         ) { result ->
                             val time = result.toLongOrNull() ?: -1L
                             if (time >= 0) {
+                                embedReady = true
                                 emptyChecks = 0
                                 if (target == videoId && time > 0) clipPosition = time
-                            } else if (++emptyChecks >= 40) embedFailed = true
+                            } else if (time == -2L || ++emptyChecks >= 40) embedFailed = true
                         }
                         delay(500)
                     }
@@ -161,8 +167,9 @@ private fun InlineArtwork(videoId: String, player: Player, artwork: @Composable 
                         TextButton(onClick = { close(false); uriHandler.openUri("https://www.youtube.com/watch?v=${target.ifEmpty { videoId }}") }) {
                             Text(stringResource(R.string.omo_open_youtube))
                         }
-                    } else AndroidView(
-                        modifier = Modifier.aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)),
+                    } else Box(contentAlignment = Alignment.Center) {
+                        AndroidView(
+                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)),
                         factory = { context ->
                             WebView(context).apply {
                                 web = this
@@ -184,14 +191,10 @@ private fun InlineArtwork(videoId: String, player: Player, artwork: @Composable 
                                     override fun shouldOverrideUrlLoading(
                                         view: WebView,
                                         request: WebResourceRequest,
-                                    ): Boolean = request.isForMainFrame &&
-                                        (request.url.scheme != "https" || request.url.host != "www.youtube.com" ||
-                                            request.url.path != "/embed/$target")
+                                    ): Boolean = request.isForMainFrame
                                 }
-                                loadUrl(
-                                    "https://www.youtube.com/embed/$target?start=${clipStart}&fs=0&playsinline=1&autoplay=1",
-                                    mapOf("Referer" to "https://${context.packageName}"),
-                                )
+                                val origin = "https://${context.packageName}"
+                                loadDataWithBaseURL(origin, playerPage(origin, target, clipStart), "text/html", "UTF-8", null)
                             }
                         },
                         onRelease = { view ->
@@ -200,12 +203,39 @@ private fun InlineArtwork(videoId: String, player: Player, artwork: @Composable 
                             view.onPause()
                             view.destroy()
                         },
-                    )
+                        )
+                        if (!embedReady) CircularProgressIndicator()
+                    }
                 }
             }
         }
     }
 }
+
+private fun playerPage(origin: String, id: String, seconds: Long) = """
+    <!doctype html><html><head>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="referrer" content="strict-origin-when-cross-origin">
+      <style>html,body,#clip{margin:0;width:100%;height:100%;background:#000}iframe{border:0}</style>
+    </head><body>
+      <iframe id="clip" title="YouTube" allow="autoplay; encrypted-media; picture-in-picture"
+        src="https://www.youtube.com/embed/$id?enablejsapi=1&amp;origin=$origin&amp;start=$seconds&amp;playsinline=1&amp;autoplay=1&amp;fs=0"></iframe>
+      <script>
+        let player, ready = false, failed = false;
+        function onYouTubeIframeAPIReady() {
+          player = new YT.Player('clip', {events: {
+            onReady: () => { ready = true; },
+            onError: () => { failed = true; }
+          }});
+        }
+        function omoPlaybackStatus() {
+          if (failed) return -2;
+          return ready ? Math.floor((player.getCurrentTime() || 0) * 1000) : -1;
+        }
+      </script>
+      <script src="https://www.youtube.com/iframe_api"></script>
+    </body></html>
+""".trimIndent()
 
 private data class VideoSession(
     val mediaId: String,

@@ -58,8 +58,8 @@ def main():
         app = DEST / "app/build.gradle.kts"
         replace(app, 'applicationId = "dev.skye.intertune"',
                 'applicationId = "dev.w0rd3r.omomusic"')
-        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.7"')
-        replace(app, 'versionCode = 103', 'versionCode = 9')
+        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.8"')
+        replace(app, 'versionCode = 103', 'versionCode = 10')
         replace(app, 'var outputFileName = "InterTune-', 'var outputFileName = "omoMusic-')
         replace(DEST / "app/src/main/res/values/app_name.xml",
                 'name="app_name">InterTune<', 'name="app_name">Omo music<')
@@ -123,56 +123,60 @@ def main():
             player.write_text(text[:start] + wrapper + wrapped + "\n                        }\n" + text[end:], encoding="utf-8")
 
         innertube = DEST / "innertube/src/main/java/com/zionhuang/innertube"
-        replace(innertube / "models/PlaylistPanelRenderer.kt",
-                "        val automixPreviewVideoRenderer: AutomixPreviewVideoRenderer?,\n    )",
-                """        val automixPreviewVideoRenderer: AutomixPreviewVideoRenderer?,
-        val playlistPanelVideoWrapperRenderer: VideoWrapper? = null,
-    )
+        shutil.copy2(ROOT / "scripts/android17/OmoVideoLookup.kt", innertube / "OmoVideoLookup.kt")
+        replace(innertube / "InnerTube.kt", "    /** What a next (",
+                """    internal suspend fun videoWatchNext(client: YouTubeClient, videoId: String) = httpClient.post("next") {
+        ytClient(client, setLogin = true)
+        setBody(kotlinx.serialization.json.buildJsonObject {
+            put("context", kotlinx.serialization.json.Json.encodeToJsonElement(Context.serializer(),
+                client.toContext(locale, visitorData, accountId)))
+            put("videoId", kotlinx.serialization.json.JsonPrimitive(videoId))
+            put("playlistId", kotlinx.serialization.json.JsonPrimitive("RDAMVM$videoId"))
+            put("enablePersistentPlaylistPanel", kotlinx.serialization.json.JsonPrimitive(true))
+            put("isAudioOnly", kotlinx.serialization.json.JsonPrimitive(true))
+            put("tunerSettingValue", kotlinx.serialization.json.JsonPrimitive("AUTOMIX_SETTING_NORMAL"))
+            put("watchEndpointMusicSupportedConfigs", kotlinx.serialization.json.buildJsonObject {
+                put("watchEndpointMusicConfig", kotlinx.serialization.json.buildJsonObject {
+                    put("hasPersistentPlaylistPanel", kotlinx.serialization.json.JsonPrimitive(true))
+                    put("musicVideoType", kotlinx.serialization.json.JsonPrimitive("MUSIC_VIDEO_TYPE_ATV"))
+                })
+            })
+        })
+    }
 
-    @Serializable
-    data class VideoWrapper(
-        val primaryRenderer: VideoRenderer? = null,
-        val counterpart: List<Counterpart> = emptyList(),
-    )
-
-    @Serializable
-    data class Counterpart(val counterpartRenderer: VideoRenderer? = null)
-
-    @Serializable
-    data class VideoRenderer(val playlistPanelVideoRenderer: VideoIdentity? = null)
-
-    @Serializable
-    data class VideoIdentity(val videoId: String? = null, val navigationEndpoint: NavigationEndpoint? = null)
-""".rstrip())
-        replace(innertube / "YouTube.kt",
-                "    /** The queue a watch-next answer holds:",
-                """    suspend fun videoCounterpart(videoId: String): String? {
-        val response = innerTube.next(WEB_REMIX, videoId, null, null, null, null).body<NextResponse>()
-        val rows = queueIn(response)?.contents.orEmpty()
-        val direct = rows.firstNotNullOfOrNull { it.playlistPanelVideoRenderer?.takeIf { song -> song.videoId == videoId } }
-        val directType = direct?.musicVideoType
-        if (directType != null && directType != MUSIC_VIDEO_TYPE_ATV) return videoId
-        val wrapper = rows
-            .firstNotNullOfOrNull { row ->
-                row.playlistPanelVideoWrapperRenderer?.takeIf {
-                    it.primaryRenderer?.playlistPanelVideoRenderer?.videoId == videoId
-                }
-            } ?: return null
-        val primary = wrapper.primaryRenderer?.playlistPanelVideoRenderer
-        val primaryType = primary?.navigationEndpoint?.watchEndpoint?.musicVideoType
-        if (primaryType != null && primaryType != MUSIC_VIDEO_TYPE_ATV) return videoId
-        return wrapper.counterpart.firstNotNullOfOrNull { candidate ->
-            val video = candidate.counterpartRenderer?.playlistPanelVideoRenderer
-            val type = video?.navigationEndpoint?.watchEndpoint?.musicVideoType
-            video?.videoId?.takeIf { type != MUSIC_VIDEO_TYPE_ATV }
+    /** What a next (""")
+        replace(innertube / "YouTube.kt", "    /** The queue a watch-next answer holds:",
+                """    suspend fun videoCounterpart(videoId: String, title: String, artists: List<String>): String? {
+        val match = try {
+            kotlinx.coroutines.withTimeoutOrNull(4_000) {
+                findVideoMatch(innerTube.videoWatchNext(WEB_REMIX, videoId).body<kotlinx.serialization.json.JsonObject>(), videoId)
+            }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
         }
+        match?.id?.let { return it }
+        if (artists.isNotEmpty()) {
+            val result = kotlinx.coroutines.withTimeoutOrNull(4_000) {
+                val searchResult = search("$title ${artists.first()}", SearchFilter.FILTER_VIDEO)
+                val failure = searchResult.exceptionOrNull()
+                if (failure is kotlinx.coroutines.CancellationException || (failure != null && match?.audioTrack == true)) {
+                    throw failure
+                }
+                searchResult.getOrNull()
+            }
+            val candidate = result?.items?.filterIsInstance<SongItem>()?.firstOrNull { song ->
+                song.title.equals(title, ignoreCase = true) &&
+                    song.artists.any { artist -> artists.any { it.equals(artist.name, ignoreCase = true) } } &&
+                    (match?.audioTrack != true || song.id != videoId)
+            }
+            candidate?.let { return it.id }
+        }
+        return videoId.takeUnless { match?.audioTrack == true }
     }
 
     /** The queue a watch-next answer holds:""")
-        replace(innertube / "YouTube.kt",
-                "import com.zionhuang.innertube.models.WatchEndpoint\n",
-                "import com.zionhuang.innertube.models.WatchEndpoint\n"
-                "import com.zionhuang.innertube.models.musicVideoType\n")
 
         for locale in ("values", "values-ru"):
             source_strings = ROOT / "client/app/src/main/res" / locale / "omo_strings.xml"
