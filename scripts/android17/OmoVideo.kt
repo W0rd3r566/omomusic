@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,9 +24,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -38,6 +41,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.Player
 import com.dd3boh.outertune.R
 import com.dd3boh.outertune.models.MediaMetadata
+import com.zionhuang.innertube.YouTube
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 
 private val youtubeId = Regex("[A-Za-z0-9_-]{11}")
 
@@ -81,6 +87,19 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
     }
 
     video?.let { session ->
+        val targetId by produceState<String?>(null, session) {
+            val counterpart = try {
+                withTimeoutOrNull(4500) { YouTube.videoCounterpart(videoId) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
+            }
+            value = counterpart?.takeIf(youtubeId::matches) ?: videoId
+        }
+        val target = targetId
+        // Album tracks and their official videos can have different intros and cuts.
+        val clipStart = if (target == videoId) session.startSeconds else 0L
         fun returnToSong() {
             video = null
             if (session.resumeAudio && player.currentMediaItem?.mediaId == session.mediaId) {
@@ -103,12 +122,16 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
                         }
                         TextButton(onClick = {
                             video = null
-                            uriHandler.openUri("https://www.youtube.com/watch?v=$videoId&t=${session.startSeconds}s")
-                        }) {
+                            uriHandler.openUri("https://www.youtube.com/watch?v=$target&t=${clipStart}s")
+                        }, enabled = target != null) {
                             Text(stringResource(R.string.omo_open_youtube))
                         }
                     }
-                    AndroidView(
+                    if (target == null) {
+                        CircularProgressIndicator(
+                            Modifier.align(Alignment.CenterHorizontally).padding(24.dp),
+                        )
+                    } else AndroidView(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 270.dp),
                         factory = { context ->
                             WebView(context).apply {
@@ -123,10 +146,10 @@ internal fun OmoVideoAction(metadata: MediaMetadata?, player: Player, modifier: 
                                         request: WebResourceRequest,
                                     ): Boolean = request.isForMainFrame &&
                                         (request.url.scheme != "https" || request.url.host != "www.youtube.com" ||
-                                            request.url.path != "/embed/$videoId")
+                                            request.url.path != "/embed/$target")
                                 }
                                 loadUrl(
-                                    "https://www.youtube.com/embed/$videoId?start=${session.startSeconds}&fs=0",
+                                    "https://www.youtube.com/embed/$target?start=${clipStart}&fs=0",
                                     mapOf("Referer" to "https://${context.packageName}"),
                                 )
                             }

@@ -125,6 +125,54 @@ def main():
 """
             player.write_text(text[:end] + action + text[end:], encoding="utf-8")
 
+        innertube = DEST / "innertube/src/main/java/com/zionhuang/innertube"
+        replace(innertube / "models/PlaylistPanelRenderer.kt",
+                "        val automixPreviewVideoRenderer: AutomixPreviewVideoRenderer?,\n    )",
+                """        val automixPreviewVideoRenderer: AutomixPreviewVideoRenderer?,
+        val playlistPanelVideoWrapperRenderer: VideoWrapper? = null,
+    )
+
+    @Serializable
+    data class VideoWrapper(
+        val primaryRenderer: VideoRenderer? = null,
+        val counterpart: List<Counterpart> = emptyList(),
+    )
+
+    @Serializable
+    data class Counterpart(val counterpartRenderer: VideoRenderer? = null)
+
+    @Serializable
+    data class VideoRenderer(val playlistPanelVideoRenderer: VideoIdentity? = null)
+
+    @Serializable
+    data class VideoIdentity(val videoId: String? = null, val navigationEndpoint: NavigationEndpoint? = null)
+""".rstrip())
+        replace(innertube / "YouTube.kt",
+                "    /** The queue a watch-next answer holds:",
+                """    suspend fun videoCounterpart(videoId: String): String? {
+        val response = innerTube.next(WEB_REMIX, videoId, null, null, null, null).body<NextResponse>()
+        val wrapper = queueIn(response)?.contents.orEmpty()
+            .firstNotNullOfOrNull { row ->
+                row.playlistPanelVideoWrapperRenderer?.takeIf {
+                    it.primaryRenderer?.playlistPanelVideoRenderer?.videoId == videoId
+                }
+            } ?: return null
+        val primary = wrapper.primaryRenderer?.playlistPanelVideoRenderer
+        val primaryType = primary?.navigationEndpoint?.watchEndpoint?.musicVideoType
+        if (primaryType != null && primaryType != MUSIC_VIDEO_TYPE_ATV) return null
+        return wrapper.counterpart.firstNotNullOfOrNull { candidate ->
+            val video = candidate.counterpartRenderer?.playlistPanelVideoRenderer
+            val type = video?.navigationEndpoint?.watchEndpoint?.musicVideoType
+            video?.videoId?.takeIf { type != MUSIC_VIDEO_TYPE_ATV }
+        }
+    }
+
+    /** The queue a watch-next answer holds:""")
+        replace(innertube / "YouTube.kt",
+                "import com.zionhuang.innertube.models.WatchEndpoint\n",
+                "import com.zionhuang.innertube.models.WatchEndpoint\n"
+                "import com.zionhuang.innertube.models.musicVideoType\n")
+
         for locale in ("values", "values-ru"):
             source_strings = ROOT / "client/app/src/main/res" / locale / "omo_strings.xml"
             target_strings = DEST / "app/src/main/res" / locale / "omo_strings.xml"
