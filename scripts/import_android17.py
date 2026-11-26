@@ -58,8 +58,8 @@ def main():
         app = DEST / "app/build.gradle.kts"
         replace(app, 'applicationId = "dev.skye.intertune"',
                 'applicationId = "dev.w0rd3r.omomusic"')
-        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.6"')
-        replace(app, 'versionCode = 103', 'versionCode = 8')
+        replace(app, 'versionName = "0.12.11"', 'versionName = "0.2.7"')
+        replace(app, 'versionCode = 103', 'versionCode = 9')
         replace(app, 'var outputFileName = "InterTune-', 'var outputFileName = "omoMusic-')
         replace(DEST / "app/src/main/res/values/app_name.xml",
                 'name="app_name">InterTune<', 'name="app_name">Omo music<')
@@ -317,10 +317,14 @@ internal data class OmoChannelsBody(
                 value = match.group()
                 if any(word in value.lower() for word in ("copyright", "licensed", "fork of", "based on", "credits")):
                     return value
-                return re.sub(r"(?<![\w./])(?:InterTune|OuterTune)(?![\w./])", "Omo music", value)
+                return re.sub(r"(^|\\n|(?<=[^\w./]))(?:InterTune|OuterTune|InnerTune)(?![\w/]|\.[a-zA-Z])", r"\1Omo music", value)
             changed = re.sub(r"(?<=>)[^<>]+(?=<)", brand, original)
             if changed != original:
                 xml.write_text(changed, encoding="utf-8")
+        for file, old in (("ui/component/LyricsCard.kt", 'APP_NAME = "InterTune"'),
+                          ("ui/screens/settings/SettingsIndex.kt", 'appName: String = "InterTune"'),
+                          ("playback/CastProbe.kt", 'Sender(Build.MODEL, "InterTune"')):
+            replace(main_package / file, old, old.replace("InterTune", "Omo music"))
         for name in ("launcher_monochrome", "launcher_foreground"):
             shutil.copy2(resources / "drawable/small_icon.xml", resources / f"drawable/{name}.xml")
         for image in resources.glob("mipmap-*/ic_launcher*.png"):
@@ -353,6 +357,74 @@ internal data class OmoChannelsBody(
             replace(target, "</resources>", "".join(
                 f'<string name="{key}">{label}</string>\n' for key, label in
                 zip(("omo_presets", "omo_mini", "omo_records"), labels)) + "</resources>")
+        # Separate launcher entries. All three use the same playback snapshot and per-widget settings.
+        widget_dir = main_package / "widget"
+        receiver = widget_dir / "MusicWidgetReceiver.kt"
+        replace(receiver, "class MusicWidgetReceiver :", "open class MusicWidgetReceiver :")
+        with receiver.open("a") as kt:
+            kt.write("\nclass OmoMiniReceiver : MusicWidgetReceiver()\nclass OmoRecordsReceiver : MusicWidgetReceiver()\n")
+        store = widget_dir / "WidgetStore.kt"
+        replace(store, """AppWidgetManager.getInstance(context)
+            .getAppWidgetIds(ComponentName(context, MusicWidgetReceiver::class.java))
+            .isNotEmpty()""", "placed(context).isNotEmpty()")
+        replace(store, "manager.getAppWidgetIds(ComponentName(context, MusicWidgetReceiver::class.java)).any", "placed(context).any")
+        replace(store, "AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, MusicWidgetReceiver::class.java)).sorted()",
+                """val manager = AppWidgetManager.getInstance(context)
+        listOf(MusicWidgetReceiver::class.java, OmoMiniReceiver::class.java, OmoRecordsReceiver::class.java)
+            .flatMap { manager.getAppWidgetIds(ComponentName(context, it)).asList() }.sorted()""")
+        replace(store, "MusicWidget().updateAll(context)", "refreshPlaced(context)")
+        replace(store, "    private val settingsLock", """    private suspend fun widgetIds(context: Context) = placed(context).map {
+        GlanceAppWidgetManager(context).getGlanceIdBy(it)
+    }
+
+    private suspend fun refreshPlaced(context: Context) {
+        for (id in widgetIds(context)) MusicWidget().update(context, id)
+    }
+
+    private val settingsLock""")
+        replace(store, "GlanceAppWidgetManager(context).getGlanceIds(MusicWidget::class.java)", "widgetIds(context)")
+        replace(store, "WidgetKeys.read(getAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId))",
+                """val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId)
+                if (prefs.asMap().isNotEmpty()) WidgetKeys.read(prefs)
+                else when (AppWidgetManager.getInstance(context).getAppWidgetInfo(appWidgetId)?.provider?.className) {
+                    OmoMiniReceiver::class.java.name -> omoMiniWidget()
+                    OmoRecordsReceiver::class.java.name -> omoRecordsWidget()
+                    else -> WidgetSettings()
+                }""")
+        mini = "WidgetSettings(style = WidgetStyle.COVER,\n                buttons = WidgetButtons.PLAY_ONLY, background = WidgetBackground.SYSTEM,\n                showArtwork = false, showLike = false)"
+        records = "WidgetSettings(style = WidgetStyle.SHELF, look = ShelfLook.RECORDS,\n                list = WidgetList.RECENT)"
+        for function, body in (("omoMiniWidget", mini), ("omoRecordsWidget", records)):
+            replace(widgets, body, function + "()")
+            with (widget_dir / "WidgetOptions.kt").open("a") as kt:
+                kt.write(f"\ninternal fun {function}() = {body}\n")
+        manifest_text = manifest.read_text()
+        at = manifest_text.index('android:name=".widget.MusicWidgetReceiver"')
+        receiver_xml = manifest_text[manifest_text.rindex("<receiver", 0, at):manifest_text.index("</receiver>", at) + 11]
+        for receiver_name, label, name, width, height in (
+            ("OmoMiniReceiver", "omo_mini", "omo_mini_widget", 3, 1),
+            ("OmoRecordsReceiver", "omo_records", "omo_records_widget", 4, 3),
+        ):
+            provider = (resources / "xml/music_widget_info.xml").read_text()
+            provider = provider.replace('android:targetCellWidth="4"', f'android:targetCellWidth="{width}"').replace(
+                'android:targetCellHeight="2"', f'android:targetCellHeight="{height}"').replace(
+                'android:minWidth="180dp"', f'android:minWidth="{width * 48}dp"').replace(
+                'android:minHeight="110dp"', f'android:minHeight="{height * 48}dp"').replace(
+                '@string/widget_description', '@string/' + label)
+            (resources / f"xml/{name}.xml").write_text(provider)
+            extra = receiver_xml.replace("MusicWidgetReceiver", receiver_name).replace("widget_label", label).replace("music_widget_info", name)
+            replace(manifest, receiver_xml, receiver_xml + "\n        " + extra)
+            picker = widget_dir / "WidgetPicker.kt"
+            replace(picker, "    RECOGNITION(", f"    {label.upper()}({receiver_name}::class.java, R.layout.widget_preview, {width}, {height}, {width*70}, {height*70}),\n    RECOGNITION(")
+            screen = DEST / ui_root / "screens/settings/WidgetsSettings.kt"
+            marker = "            WidgetAddRow(\n                title = stringResource(R.string.recognise),"
+            replace(screen, marker, f"""            WidgetAddRow(
+                title = stringResource(R.string.{label}),
+                widget = OfferedWidget.{label.upper()},
+                onAdd = if (canPin) {{ {{ add(OfferedWidget.{label.upper()}) }} }} else null,
+                modifier = Modifier.settingRow(R.string.{label}),
+            )
+            WidgetsRowLine()
+""" + marker)
         service = main_package / "playback/MusicService.kt"
         controls = main_package / "playback/MediaControlButtons.kt"
         replace(controls, "    const val SLOTS = 2", """    const val SLOTS = 2
